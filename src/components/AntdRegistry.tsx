@@ -1,0 +1,24 @@
+"use client";
+
+import React from "react";
+import { createCache, extractStyle, StyleProvider } from "@ant-design/cssinjs";
+import type Entity from "@ant-design/cssinjs/es/Cache";
+import { useServerInsertedHTML } from "next/navigation";
+
+export default function AntdRegistry({ children }: React.PropsWithChildren) {
+  const cache = React.useMemo<Entity>(() => createCache(), []);
+  const isInsert = React.useRef(false);
+
+  useServerInsertedHTML(() => {
+    if (isInsert.current) return;
+    isInsert.current = true;
+    return (
+      <style
+        id="antd"
+        dangerouslySetInnerHTML={{ __html: extractStyle(cache, true) }}
+      />
+    );
+  });
+
+  return <StyleProvider cache={cache}>{children}</StyleProvider>;
+}

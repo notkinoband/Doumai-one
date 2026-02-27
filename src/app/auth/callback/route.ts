@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { initSampleData } from "@/services/onboarding";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -13,7 +14,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/login?error=auth`);
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const { data: existingUser } = await supabase
         .from("users")
@@ -53,7 +56,13 @@ export async function GET(request: Request) {
             expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
             status: "active",
           });
+
+          await initSampleData(supabase, tenant.id);
         }
+
+        return NextResponse.redirect(
+          `${origin}/auth/welcome?next=${encodeURIComponent(next)}`
+        );
       }
     }
 

@@ -4,10 +4,6 @@ const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_
 
 export async function middleware(request: NextRequest) {
   if (isMock) {
-    const isLogin = request.nextUrl.pathname === "/login";
-    if (isLogin) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
     return NextResponse.next();
   }
 

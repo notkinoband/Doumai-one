@@ -62,10 +62,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           const { tenants, ...userData } = profile;
           setUser(userData); setTenant(tenants);
         } else {
-          const { data: newTenant } = await supabase.from("tenants").insert({ name: "我的店铺", status: "active" }).select().single();
-          if (newTenant) {
-            const { data: newUser } = await supabase.from("users").insert({ tenant_id: newTenant.id, auth_id: authUser.id, email: authUser.email || "", role: "admin", status: "active", onboarding_completed: false }).select().single();
-            setUser(newUser); setTenant(newTenant);
+          const res = await fetch("/api/auth/setup", { method: "POST" });
+          if (res.ok) {
+            const { data: newProfile } = await supabase.from("users").select("*, tenants(*)").eq("auth_id", authUser.id).single();
+            if (newProfile) {
+              const { tenants: t, ...ud } = newProfile;
+              setUser(ud); setTenant(t);
+            }
           }
         }
       } catch (err) { console.error("Init user error:", err); }

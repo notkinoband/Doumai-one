@@ -13,7 +13,6 @@ import {
 } from "@ant-design/icons";
 import { BRAND } from "@/lib/constants";
 import { isMockMode } from "@/lib/mock-mode";
-import { initSampleData } from "@/services/onboarding";
 
 const { Text } = Typography;
 
@@ -26,54 +25,11 @@ export default function LoginPage() {
     return createClient();
   };
 
-  const setupNewUser = async (
-    supabase: Awaited<ReturnType<typeof getSupabase>>,
-    userId: string,
-    email: string
-  ) => {
-    const { data: existingUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("auth_id", userId)
-      .single();
-
-    if (existingUser) return false;
-
-    const { data: tenant } = await supabase
-      .from("tenants")
-      .insert({
-        name: email.split("@")[0] + " 的店铺",
-        category: "未设置",
-        sku_scale: "0-50",
-        status: "active",
-      })
-      .select("id")
-      .single();
-
-    if (!tenant) throw new Error("创建店铺失败，请重试");
-
-    await supabase.from("users").insert({
-      tenant_id: tenant.id,
-      auth_id: userId,
-      email,
-      nickname: email.split("@")[0],
-      role: "admin",
-      onboarding_completed: false,
-      status: "active",
-    });
-
-    await supabase.from("subscriptions").insert({
-      tenant_id: tenant.id,
-      plan: "free",
-      billing_cycle: "monthly",
-      price: 0,
-      started_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
-      status: "active",
-    });
-
-    await initSampleData(supabase, tenant.id);
-    return true;
+  const setupNewUser = async () => {
+    const res = await fetch("/api/auth/setup", { method: "POST" });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "创建店铺失败，请重试");
+    return json.isNew as boolean;
   };
 
   const handleLogin = async (values: { email: string; password: string }) => {
@@ -101,9 +57,9 @@ export default function LoginPage() {
           if (signUpErr) throw signUpErr;
           if (!data.user) throw new Error("自动注册失败，请重试");
 
-          await setupNewUser(supabase, data.user.id, values.email);
+          const isNew = await setupNewUser();
           message.success("注册成功，正在进入工作台...");
-          window.location.href = "/auth/welcome";
+          window.location.href = isNew ? "/auth/welcome" : "/dashboard";
           return;
         }
         throw error;
@@ -138,7 +94,7 @@ export default function LoginPage() {
       if (error) throw error;
       if (!data.user) throw new Error("注册失败，请重试");
 
-      await setupNewUser(supabase, data.user.id, values.email);
+      await setupNewUser();
 
       message.success("注册成功，正在进入工作台...");
       window.location.href = "/auth/welcome";

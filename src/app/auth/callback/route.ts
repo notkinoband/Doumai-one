@@ -25,20 +25,18 @@ export async function GET(request: Request) {
         .single();
 
       if (!existingUser) {
-        const { data: tenant } = await supabase
-          .from("tenants")
-          .insert({
-            name: user.email?.split("@")[0] + " 的店铺",
-            category: "未设置",
-            sku_scale: "0-50",
-            status: "active",
-          })
-          .select("id")
-          .single();
+        const tenantId = crypto.randomUUID();
+        const { error: tenantError } = await supabase.from("tenants").insert({
+          id: tenantId,
+          name: (user.email?.split("@")[0] || "新用户") + " 的店铺",
+          category: "未设置",
+          sku_scale: "0-50",
+          status: "active",
+        });
 
-        if (tenant) {
+        if (!tenantError) {
           await supabase.from("users").insert({
-            tenant_id: tenant.id,
+            tenant_id: tenantId,
             auth_id: user.id,
             email: user.email ?? "",
             nickname: user.email?.split("@")[0] ?? "新用户",
@@ -48,7 +46,7 @@ export async function GET(request: Request) {
           });
 
           await supabase.from("subscriptions").insert({
-            tenant_id: tenant.id,
+            tenant_id: tenantId,
             plan: "free",
             billing_cycle: "monthly",
             price: 0,
@@ -57,7 +55,7 @@ export async function GET(request: Request) {
             status: "active",
           });
 
-          await initSampleData(supabase, tenant.id);
+          await initSampleData(supabase, tenantId);
         }
 
         return NextResponse.redirect(

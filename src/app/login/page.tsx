@@ -430,7 +430,7 @@ export default function LoginPage() {
         size="large"
         block
         loading={loading}
-        onClick={handleLogin}
+        onClick={() => handleLogin({ phone: "demo@doumai.com", password: "demo123456" })}
         style={{
           height: 50,
           borderRadius: 12,

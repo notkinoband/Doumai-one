@@ -21,6 +21,7 @@ const { Text } = Typography;
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
   const { message } = App.useApp();
 
   useEffect(() => {
@@ -58,6 +59,37 @@ export default function LoginPage() {
     if (countdown > 0) return;
     setCountdown(60);
     message.success("验证码已发送");
+  };
+
+  const handleRegister = async (values: { email: string; password: string; confirm: string }) => {
+    if (values.password !== values.confirm) {
+      message.error("两次密码输入不一致");
+      return;
+    }
+    if (values.password.length < 6) {
+      message.error("密码至少 6 位");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      setRegisterSuccess(true);
+      message.success("注册成功！请查收验证邮件");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "注册失败，请重试";
+      message.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const headerNav = (
@@ -421,34 +453,91 @@ export default function LoginPage() {
     </Form>
   );
 
-  const registerForm = (
-    <div style={{ padding: "20px 0", textAlign: "center" }}>
-      <p style={{ color: "#999", marginBottom: 24 }}>
-        无需注册，点击下方按钮一键体验 {BRAND.name} 全部功能
+  const registerForm = registerSuccess ? (
+    <div style={{ padding: "32px 0", textAlign: "center" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📧</div>
+      <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>验证邮件已发送</h3>
+      <p style={{ color: "#999", marginBottom: 24, lineHeight: 1.8 }}>
+        请前往您的邮箱点击验证链接完成注册，<br />验证后即可登录使用 {BRAND.name}
       </p>
-      <Button
-        size="large"
-        block
-        loading={loading}
-        onClick={() => handleLogin({ phone: "demo@doumai.com", password: "demo123456" })}
-        style={{
-          height: 50,
-          borderRadius: 12,
-          background: "linear-gradient(135deg, #FACC15, #EAB308)",
-          border: "none",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#fff",
-          boxShadow: "0 4px 16px rgba(234, 179, 8, 0.35)",
-        }}
-      >
-        <TeamOutlined />
-        <span style={{ marginLeft: 8 }}>进入演示模式</span>
+      <Button type="link" onClick={() => setRegisterSuccess(false)}>
+        返回注册
       </Button>
-      <p style={{ fontSize: 12, color: "#bbb", marginTop: 12 }}>
-        演示数据定期重置，请放心体验
-      </p>
     </div>
+  ) : (
+    <Form size="large" layout="vertical" onFinish={handleRegister}>
+      <Form.Item
+        name="email"
+        rules={[
+          { required: true, message: "请输入邮箱地址" },
+          { type: "email", message: "邮箱格式不正确" },
+        ]}
+        style={{ marginBottom: 20 }}
+      >
+        <Input
+          prefix={<UserOutlined style={{ color: "#bbb" }} />}
+          placeholder="请输入邮箱地址"
+          style={{ height: 46, borderRadius: 10 }}
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="password"
+        rules={[
+          { required: true, message: "请设置密码" },
+          { min: 6, message: "密码至少 6 位" },
+        ]}
+        style={{ marginBottom: 20 }}
+      >
+        <Input.Password
+          prefix={<LockOutlined style={{ color: "#bbb" }} />}
+          placeholder="请设置密码（至少 6 位）"
+          style={{ height: 46, borderRadius: 10 }}
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="confirm"
+        dependencies={["password"]}
+        rules={[
+          { required: true, message: "请确认密码" },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value || getFieldValue("password") === value) return Promise.resolve();
+              return Promise.reject(new Error("两次密码输入不一致"));
+            },
+          }),
+        ]}
+        style={{ marginBottom: 24 }}
+      >
+        <Input.Password
+          prefix={<LockOutlined style={{ color: "#bbb" }} />}
+          placeholder="请再次输入密码"
+          style={{ height: 46, borderRadius: 10 }}
+        />
+      </Form.Item>
+
+      <Form.Item style={{ marginBottom: 20 }}>
+        <Button
+          htmlType="submit"
+          block
+          loading={loading}
+          style={{
+            height: 50,
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            border: "none",
+            fontSize: 16,
+            fontWeight: 600,
+            color: "#fff",
+            boxShadow: "0 4px 16px rgba(234, 179, 8, 0.35)",
+          }}
+        >
+          <span style={{ marginRight: 8 }}>注册</span>
+          <ArrowRightOutlined />
+        </Button>
+      </Form.Item>
+    </Form>
   );
 
   const rightPanel = (

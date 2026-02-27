@@ -21,6 +21,61 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { message } = App.useApp();
 
+  const getSupabase = async () => {
+    const { createClient } = await import("@/lib/supabase/client");
+    return createClient();
+  };
+
+  const setupNewUser = async (
+    supabase: Awaited<ReturnType<typeof getSupabase>>,
+    userId: string,
+    email: string
+  ) => {
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_id", userId)
+      .single();
+
+    if (existingUser) return false;
+
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .insert({
+        name: email.split("@")[0] + " 的店铺",
+        category: "未设置",
+        sku_scale: "0-50",
+        status: "active",
+      })
+      .select("id")
+      .single();
+
+    if (!tenant) throw new Error("创建店铺失败，请重试");
+
+    await supabase.from("users").insert({
+      tenant_id: tenant.id,
+      auth_id: userId,
+      email,
+      nickname: email.split("@")[0],
+      role: "admin",
+      onboarding_completed: false,
+      status: "active",
+    });
+
+    await supabase.from("subscriptions").insert({
+      tenant_id: tenant.id,
+      plan: "free",
+      billing_cycle: "monthly",
+      price: 0,
+      started_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
+      status: "active",
+    });
+
+    await initSampleData(supabase, tenant.id);
+    return true;
+  };
+
   const handleLogin = async (values: { email: string; password: string }) => {
     setLoading(true);
     if (isMockMode) {
@@ -30,17 +85,35 @@ export default function LoginPage() {
       return;
     }
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
+      const supabase = await getSupabase();
       const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
-      if (error) throw error;
+
+      if (error) {
+        if (error.message === "Invalid login credentials") {
+          message.loading("账号不存在，正在为您自动注册...");
+          const { data, error: signUpErr } = await supabase.auth.signUp({
+            email: values.email,
+            password: values.password,
+          });
+          if (signUpErr) throw signUpErr;
+          if (!data.user) throw new Error("自动注册失败，请重试");
+
+          await setupNewUser(supabase, data.user.id, values.email);
+          message.success("注册成功，正在进入工作台...");
+          window.location.href = "/auth/welcome";
+          return;
+        }
+        throw error;
+      }
+
       message.success("登录成功，正在跳转...");
       setTimeout(() => (window.location.href = "/dashboard"), 300);
-    } catch {
-      message.error("邮箱或密码错误，请重试");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "登录失败，请重试";
+      message.error(msg);
     } finally {
       setLoading(false);
     }
@@ -57,52 +130,15 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-
+      const supabase = await getSupabase();
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
       });
       if (error) throw error;
+      if (!data.user) throw new Error("注册失败，请重试");
 
-      const user = data.user;
-      if (!user) throw new Error("注册失败，请重试");
-
-      const { data: tenant } = await supabase
-        .from("tenants")
-        .insert({
-          name: values.email.split("@")[0] + " 的店铺",
-          category: "未设置",
-          sku_scale: "0-50",
-          status: "active",
-        })
-        .select("id")
-        .single();
-
-      if (!tenant) throw new Error("创建店铺失败，请重试");
-
-      await supabase.from("users").insert({
-        tenant_id: tenant.id,
-        auth_id: user.id,
-        email: values.email,
-        nickname: values.email.split("@")[0],
-        role: "admin",
-        onboarding_completed: false,
-        status: "active",
-      });
-
-      await supabase.from("subscriptions").insert({
-        tenant_id: tenant.id,
-        plan: "free",
-        billing_cycle: "monthly",
-        price: 0,
-        started_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
-        status: "active",
-      });
-
-      await initSampleData(supabase, tenant.id);
+      await setupNewUser(supabase, data.user.id, values.email);
 
       message.success("注册成功，正在进入工作台...");
       window.location.href = "/auth/welcome";

@@ -1,88 +1,27 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useCallback } from "react";
-import { Form, Input, Button, Typography, Checkbox, Tabs, App, Space, Alert, Spin } from "antd";
+import React, { useState } from "react";
+import { Form, Input, Button, Typography, Checkbox, Tabs, App } from "antd";
 import {
   UserOutlined,
   LockOutlined,
-  SafetyCertificateOutlined,
   WechatOutlined,
   DingtalkOutlined,
   SwapOutlined,
   DatabaseOutlined,
   ArrowRightOutlined,
-  MailOutlined,
-  ReloadOutlined,
 } from "@ant-design/icons";
-import { useSearchParams } from "next/navigation";
 import { BRAND } from "@/lib/constants";
 import { isMockMode } from "@/lib/mock-mode";
+import { initSampleData } from "@/services/onboarding";
 
 const { Text } = Typography;
 
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Spin size="large" />
-        </div>
-      }
-    >
-      <LoginContent />
-    </Suspense>
-  );
-}
-
-function LoginContent() {
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [registerSuccess, setRegisterSuccess] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
   const { message } = App.useApp();
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get("error");
 
-  useEffect(() => {
-    if (urlError === "auth") {
-      message.error("验证链接已过期或无效，请重新注册或登录");
-    }
-  }, [urlError, message]);
-
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(countdown - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
-
-  const handleResendVerification = useCallback(async () => {
-    if (resendCooldown > 0 || !registeredEmail) return;
-    try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: registeredEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-      setResendCooldown(60);
-      message.success("验证邮件已重新发送");
-    } catch {
-      message.error("发送失败，请稍后重试");
-    }
-  }, [resendCooldown, registeredEmail, message]);
-
-  const handleLogin = async (values: { phone: string; password: string }) => {
+  const handleLogin = async (values: { email: string; password: string }) => {
     setLoading(true);
     if (isMockMode) {
       await new Promise((r) => setTimeout(r, 600));
@@ -94,7 +33,7 @@ function LoginContent() {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({
-        email: values.phone,
+        email: values.email,
         password: values.password,
       });
       if (error) throw error;
@@ -105,12 +44,6 @@ function LoginContent() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSendCode = () => {
-    if (countdown > 0) return;
-    setCountdown(60);
-    message.success("验证码已发送");
   };
 
   const handleRegister = async (values: { email: string; password: string; confirm: string }) => {
@@ -126,18 +59,53 @@ function LoginContent() {
     try {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+
+      const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
       });
       if (error) throw error;
-      setRegisteredEmail(values.email);
-      setRegisterSuccess(true);
-      setResendCooldown(60);
-      message.success("注册成功！请查收验证邮件");
+
+      const user = data.user;
+      if (!user) throw new Error("注册失败，请重试");
+
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .insert({
+          name: values.email.split("@")[0] + " 的店铺",
+          category: "未设置",
+          sku_scale: "0-50",
+          status: "active",
+        })
+        .select("id")
+        .single();
+
+      if (!tenant) throw new Error("创建店铺失败，请重试");
+
+      await supabase.from("users").insert({
+        tenant_id: tenant.id,
+        auth_id: user.id,
+        email: values.email,
+        nickname: values.email.split("@")[0],
+        role: "admin",
+        onboarding_completed: false,
+        status: "active",
+      });
+
+      await supabase.from("subscriptions").insert({
+        tenant_id: tenant.id,
+        plan: "free",
+        billing_cycle: "monthly",
+        price: 0,
+        started_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
+        status: "active",
+      });
+
+      await initSampleData(supabase, tenant.id);
+
+      message.success("注册成功，正在进入工作台...");
+      window.location.href = "/auth/welcome";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "注册失败，请重试";
       message.error(msg);
@@ -414,13 +382,13 @@ function LoginContent() {
   const loginForm = (
     <Form size="large" layout="vertical" onFinish={handleLogin}>
       <Form.Item
-        name="phone"
-        rules={[{ required: true, message: "请输入手机号或邮箱地址" }]}
+        name="email"
+        rules={[{ required: true, message: "请输入邮箱地址" }]}
         style={{ marginBottom: 20 }}
       >
         <Input
           prefix={<UserOutlined style={{ color: "#bbb" }} />}
-          placeholder="请输入手机号或邮箱地址"
+          placeholder="请输入邮箱地址"
           style={{ height: 46, borderRadius: 10 }}
         />
       </Form.Item>
@@ -453,31 +421,6 @@ function LoginContent() {
         </Form.Item>
       </div>
 
-      <Form.Item style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 14, color: "#333", display: "block", marginBottom: 8 }}>
-          验证码
-        </Text>
-        <div style={{ display: "flex", gap: 12 }}>
-          <Input
-            prefix={<SafetyCertificateOutlined style={{ color: "#bbb" }} />}
-            placeholder="输入验证码"
-            style={{ flex: 1, height: 46, borderRadius: 10 }}
-          />
-          <Button
-            style={{
-              height: 46,
-              borderRadius: 10,
-              minWidth: 120,
-              fontWeight: 500,
-            }}
-            disabled={countdown > 0}
-            onClick={handleSendCode}
-          >
-            {countdown > 0 ? `${countdown}s` : "获取验证码"}
-          </Button>
-        </div>
-      </Form.Item>
-
       <Form.Item style={{ marginBottom: 24 }}>
         <Checkbox>
           <Text style={{ fontSize: 13, color: "#999" }}>记住我</Text>
@@ -507,56 +450,7 @@ function LoginContent() {
     </Form>
   );
 
-  const registerForm = registerSuccess ? (
-    <div style={{ padding: "24px 0", textAlign: "center" }}>
-      <div
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #e8f5e9, #c8e6c9)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          margin: "0 auto 20px",
-        }}
-      >
-        <MailOutlined style={{ fontSize: 32, color: "#52C41A" }} />
-      </div>
-      <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: "#1a1a1a" }}>
-        验证邮件已发送
-      </h3>
-      <p style={{ color: "#666", marginBottom: 8, lineHeight: 1.8, fontSize: 14 }}>
-        我们已向 <Text strong>{registeredEmail}</Text> 发送了验证链接
-      </p>
-      <p style={{ color: "#999", marginBottom: 24, lineHeight: 1.8, fontSize: 13 }}>
-        请前往邮箱点击链接完成验证，验证后将自动跳转到 {BRAND.name} 工作台
-      </p>
-
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 20, textAlign: "left", borderRadius: 10 }}
-        message="没有收到邮件？"
-        description="请检查垃圾邮件文件夹，或点击下方按钮重新发送"
-      />
-
-      <Space direction="vertical" style={{ width: "100%" }} size={12}>
-        <Button
-          icon={<ReloadOutlined />}
-          block
-          disabled={resendCooldown > 0}
-          onClick={handleResendVerification}
-          style={{ height: 42, borderRadius: 10 }}
-        >
-          {resendCooldown > 0 ? `${resendCooldown}s 后可重新发送` : "重新发送验证邮件"}
-        </Button>
-        <Button type="link" onClick={() => { setRegisterSuccess(false); setRegisteredEmail(""); }}>
-          使用其他邮箱注册
-        </Button>
-      </Space>
-    </div>
-  ) : (
+  const registerForm = (
     <Form size="large" layout="vertical" onFinish={handleRegister}>
       <Form.Item
         name="email"

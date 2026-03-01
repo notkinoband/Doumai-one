@@ -54,7 +54,15 @@ export default function LoginPage() {
             email: values.email,
             password: values.password,
           });
-          if (signUpErr) throw signUpErr;
+          if (signUpErr) {
+            const alreadyExists =
+              /already registered|already exist|already been registered/i.test(signUpErr.message);
+            if (alreadyExists) {
+              message.error("邮箱或密码错误，请重试");
+              return;
+            }
+            throw signUpErr;
+          }
           if (!data.user) throw new Error("自动注册失败，请重试");
 
           const isNew = await setupNewUser();

@@ -29,10 +29,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoginPage = request.nextUrl.pathname === "/login";
-  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth");
+  const pathname = request.nextUrl.pathname;
+  const isLoginPage = pathname === "/login";
+  const isAuthCallback = pathname.startsWith("/auth");
+  const isLandingPage = pathname === "/";
+  const isPublicPath = isLoginPage || isAuthCallback || isLandingPage;
 
-  if (!user && !isLoginPage && !isAuthCallback) {
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

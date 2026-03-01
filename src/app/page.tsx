@@ -35,7 +35,6 @@ export default function LandingPage() {
           <nav style={{ display: "flex", gap: 32, alignItems: "center", fontSize: 14, color: "#4b5563" }}>
             <a href="#features" style={{ color: "inherit", textDecoration: "none" }}>核心功能</a>
             <a href="#about" style={{ color: "inherit", textDecoration: "none" }}>产品运营</a>
-            <a href="#testimonials" style={{ color: "inherit", textDecoration: "none" }}>客户口碑</a>
             <a href="#pricing" style={{ color: "inherit", textDecoration: "none" }}>套餐定价</a>
             <a href="#help" style={{ color: "inherit", textDecoration: "none" }}>帮助中心</a>
           </nav>
@@ -134,16 +133,6 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* 客户口碑 */}
-        <section id="testimonials" style={{ padding: "64px 1rem", background: BRAND_CREAM }}>
-          <div style={{ maxWidth: 896, margin: "0 auto", textAlign: "center" }}>
-            <h2 style={{ fontSize: "1.875rem", fontWeight: 700, color: "#111", marginBottom: 24 }}>客户口碑</h2>
-            <p style={{ color: "#4b5563", lineHeight: 1.8, fontSize: 16 }}>
-              来自中小卖家的真实反馈：库存一目了然，再也不用担心超卖和恶意退货。
-            </p>
           </div>
         </section>
 

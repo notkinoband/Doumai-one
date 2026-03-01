@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Form, Input, Button, Typography, Checkbox, Tabs, App } from "antd";
 import {
   UserOutlined,
@@ -131,7 +132,7 @@ export default function LoginPage() {
         borderBottom: "1px solid #f0f0f0",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "inherit" }}>
         <div
           style={{
             width: 32,
@@ -151,34 +152,32 @@ export default function LoginPage() {
         <span style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>
           {BRAND.name}
         </span>
-      </div>
+      </Link>
 
       <nav style={{ display: "flex", gap: 32, alignItems: "center" }}>
-        {["首页", "产品功能", "价格方案", "帮助中心"].map((item) => (
-          <Text
-            key={item}
-            style={{ fontSize: 14, color: "#666", cursor: "pointer" }}
-          >
-            {item}
-          </Text>
-        ))}
+        <Link href="/" style={{ fontSize: 14, color: "#666", textDecoration: "none" }}>首页</Link>
+        <a href="/#features" style={{ fontSize: 14, color: "#666", textDecoration: "none" }}>产品功能</a>
+        <a href="/#pricing" style={{ fontSize: 14, color: "#666", textDecoration: "none" }}>价格方案</a>
+        <a href="/#help" style={{ fontSize: 14, color: "#666", textDecoration: "none" }}>帮助中心</a>
       </nav>
 
-      <Button
-        type="primary"
-        shape="round"
-        style={{
-          background: "linear-gradient(135deg, #FACC15, #EAB308)",
-          border: "none",
-          fontWeight: 600,
-          height: 36,
-          padding: "0 24px",
-          color: "#fff",
-          boxShadow: "0 2px 8px rgba(234, 179, 8, 0.3)",
-        }}
-      >
-        免费试用
-      </Button>
+      <Link href="/login">
+        <Button
+          type="primary"
+          shape="round"
+          style={{
+            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            border: "none",
+            fontWeight: 600,
+            height: 36,
+            padding: "0 24px",
+            color: "#fff",
+            boxShadow: "0 2px 8px rgba(234, 179, 8, 0.3)",
+          }}
+        >
+          免费试用
+        </Button>
+      </Link>
     </header>
   );
 

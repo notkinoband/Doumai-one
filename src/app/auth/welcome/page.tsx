@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, Suspense, useEffect } from "react";
 import {
   Form,
   Input,
@@ -25,6 +25,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import { useSearchParams, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { BRAND } from "@/lib/constants";
 import type { OnboardingCompletePayload, OnboardingProduct } from "@/services/onboarding";
 
@@ -68,9 +69,32 @@ function WelcomeContent() {
   const router = useRouter();
   const next = searchParams.get("next") || "/dashboard";
   const { message } = App.useApp();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+      supabase
+        .from("users")
+        .select("onboarding_completed")
+        .eq("auth_id", user.id)
+        .single()
+        .then(({ data }) => {
+          setChecking(false);
+          if (data?.onboarding_completed) router.replace(next);
+        })
+        .then(undefined, () => setChecking(false));
+    });
+  }, [next, router]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [step1Data, setStep1Data] = useState<{ storeName?: string; category?: string | null; skuScale?: string | null } | null>(null);
+  const [step2Data, setStep2Data] = useState<{ platforms?: string[]; globalAlertThreshold?: number } | null>(null);
   const [step1Form] = Form.useForm();
   const [step2Form] = Form.useForm();
   const [step3Form] = Form.useForm();
@@ -79,6 +103,7 @@ function WelcomeContent() {
     if (currentStep === 0) {
       try {
         await step1Form.validateFields();
+        setStep1Data(step1Form.getFieldsValue());
         setCurrentStep(1);
       } catch {
         // validation failed
@@ -86,6 +111,7 @@ function WelcomeContent() {
       return;
     }
     if (currentStep === 1) {
+      setStep2Data(step2Form.getFieldsValue());
       setCurrentStep(2);
       return;
     }
@@ -100,8 +126,8 @@ function WelcomeContent() {
     } catch {
       return;
     }
-    const step1 = step1Form.getFieldsValue();
-    const step2 = step2Form.getFieldsValue();
+    const step1 = step1Data ?? step1Form.getFieldsValue();
+    const step2 = step2Data ?? step2Form.getFieldsValue();
     const { productList } = step3Form.getFieldsValue();
     const products: OnboardingProduct[] = (productList || [])
       .filter((p: { name?: string }) => p?.name?.trim())
@@ -145,6 +171,14 @@ function WelcomeContent() {
       setSubmitting(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Spin size="large" tip="加载中..." />
+      </div>
+    );
+  }
 
   return (
     <div

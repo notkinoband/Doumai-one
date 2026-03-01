@@ -17,6 +17,11 @@ import { isMockMode } from "@/lib/mock-mode";
 
 const { Text } = Typography;
 
+const BRAND_PRIMARY = "#D35400";
+const BRAND_SECONDARY = "#E67E22";
+const BRAND_DARK = "#1A1A1A";
+const BRAND_CREAM = "#FDFCFB";
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { message } = App.useApp();
@@ -138,7 +143,7 @@ export default function LoginPage() {
             width: 32,
             height: 32,
             borderRadius: 8,
-            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -166,13 +171,13 @@ export default function LoginPage() {
           type="primary"
           shape="round"
           style={{
-            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
             border: "none",
             fontWeight: 600,
             height: 36,
             padding: "0 24px",
             color: "#fff",
-            boxShadow: "0 2px 8px rgba(234, 179, 8, 0.3)",
+            boxShadow: "0 2px 8px rgba(211, 84, 0, 0.3)",
           }}
         >
           免费试用
@@ -185,7 +190,7 @@ export default function LoginPage() {
     <div
       style={{
         flex: 1,
-        background: "linear-gradient(160deg, #FDE68A 0%, #BEF264 50%, #86EFAC 100%)",
+        background: `linear-gradient(160deg, ${BRAND_CREAM} 0%, #FFF5EB 50%, #FFEDE0 100%)`,
         borderRadius: 24,
         margin: 24,
         padding: "60px 48px",
@@ -346,7 +351,7 @@ export default function LoginPage() {
                 width: 36,
                 height: 36,
                 borderRadius: "50%",
-                background: i === 0 ? "#FDE68A" : i === 1 ? "#FBBF24" : "#F59E0B",
+                background: i === 0 ? "#FFEDE0" : i === 1 ? "#E67E22" : "#D35400",
                 border: "2px solid #fff",
                 display: "flex",
                 alignItems: "center",
@@ -363,7 +368,7 @@ export default function LoginPage() {
         <div
           style={{
             marginLeft: 4,
-            background: "#FACC15",
+            background: BRAND_PRIMARY,
             borderRadius: 20,
             padding: "4px 12px",
             fontSize: 12,
@@ -402,7 +407,7 @@ export default function LoginPage() {
         >
           <Text style={{ fontSize: 14, color: "#333" }}>密码</Text>
           <Text
-            style={{ fontSize: 13, color: "#EAB308", cursor: "pointer" }}
+            style={{ fontSize: 13, color: BRAND_PRIMARY, cursor: "pointer" }}
           >
             忘记密码?
           </Text>
@@ -434,12 +439,12 @@ export default function LoginPage() {
           style={{
             height: 50,
             borderRadius: 12,
-            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
             border: "none",
             fontSize: 16,
             fontWeight: 600,
             color: "#fff",
-            boxShadow: "0 4px 16px rgba(234, 179, 8, 0.35)",
+            boxShadow: "0 4px 16px rgba(211, 84, 0, 0.35)",
           }}
         >
           <span style={{ marginRight: 8 }}>登录</span>
@@ -510,12 +515,12 @@ export default function LoginPage() {
           style={{
             height: 50,
             borderRadius: 12,
-            background: "linear-gradient(135deg, #FACC15, #EAB308)",
+            background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
             border: "none",
             fontSize: 16,
             fontWeight: 600,
             color: "#fff",
-            boxShadow: "0 4px 16px rgba(234, 179, 8, 0.35)",
+            boxShadow: "0 4px 16px rgba(211, 84, 0, 0.35)",
           }}
         >
           <span style={{ marginRight: 8 }}>注册</span>
@@ -591,9 +596,9 @@ export default function LoginPage() {
       <div style={{ textAlign: "center" }}>
         <Text style={{ fontSize: 12, color: "#ccc" }}>
           登录即代表您同意{" "}
-          <a style={{ color: "#EAB308" }}>服务条款</a>
+          <a style={{ color: BRAND_PRIMARY }}>服务条款</a>
           {" "}和{" "}
-          <a style={{ color: "#EAB308" }}>隐私政策</a>
+          <a style={{ color: BRAND_PRIMARY }}>隐私政策</a>
         </Text>
       </div>
     </div>
@@ -603,7 +608,7 @@ export default function LoginPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#fafafa",
+        background: BRAND_CREAM,
         display: "flex",
         flexDirection: "column",
       }}

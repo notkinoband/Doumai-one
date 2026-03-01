@@ -13,6 +13,10 @@ import { BRAND } from "@/lib/constants";
 
 const { Title, Text } = Typography;
 
+const BRAND_PRIMARY = "#D35400";
+const BRAND_SECONDARY = "#E67E22";
+const BRAND_CREAM = "#FDFCFB";
+
 const steps = [
   { icon: <ShopOutlined />, label: "创建您的店铺" },
   { icon: <AppstoreOutlined />, label: "初始化示例商品" },
@@ -57,7 +61,7 @@ function WelcomeContent() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(160deg, #FDE68A 0%, #BEF264 50%, #86EFAC 100%)",
+        background: `linear-gradient(160deg, ${BRAND_CREAM} 0%, #FFF5EB 50%, #FFEDE0 100%)`,
       }}
     >
       <div
@@ -82,7 +86,7 @@ function WelcomeContent() {
               height: 64,
               margin: "0 auto 24px",
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #FACC15, #EAB308)",
+              background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -107,7 +111,7 @@ function WelcomeContent() {
         <Progress
           percent={progress}
           showInfo={false}
-          strokeColor={{ from: "#FACC15", to: "#52C41A" }}
+          strokeColor={{ from: BRAND_PRIMARY, to: "#52C41A" }}
           style={{ marginBottom: 32 }}
         />
 
@@ -127,9 +131,9 @@ function WelcomeContent() {
                   background: finished
                     ? "#f6ffed"
                     : active
-                      ? "#fffbe6"
+                      ? "#FFF5EB"
                       : "#fafafa",
-                  border: `1px solid ${finished ? "#b7eb8f" : active ? "#ffe58f" : "#f0f0f0"}`,
+                  border: `1px solid ${finished ? "#b7eb8f" : active ? "#FFEDE0" : "#f0f0f0"}`,
                   transition: "all 0.3s",
                 }}
               >
@@ -144,7 +148,7 @@ function WelcomeContent() {
                     background: finished
                       ? "#52C41A"
                       : active
-                        ? "#FACC15"
+                        ? BRAND_PRIMARY
                         : "#e8e8e8",
                     color: "#fff",
                     fontSize: 16,
@@ -156,7 +160,7 @@ function WelcomeContent() {
                 <Text
                   strong={finished || active}
                   style={{
-                    color: finished ? "#52C41A" : active ? "#d48806" : "#999",
+                    color: finished ? "#52C41A" : active ? BRAND_PRIMARY : "#999",
                   }}
                 >
                   {step.label}
@@ -175,11 +179,11 @@ function WelcomeContent() {
             style={{
               height: 48,
               borderRadius: 12,
-              background: "linear-gradient(135deg, #FACC15, #EAB308)",
+              background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
               border: "none",
               fontWeight: 600,
               color: "#fff",
-              boxShadow: "0 4px 16px rgba(234, 179, 8, 0.35)",
+              boxShadow: "0 4px 16px rgba(211, 84, 0, 0.35)",
             }}
           >
             进入工作台

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Form, Input, Button, Typography, Checkbox, Tabs, App } from "antd";
+import { useRouter } from "next/navigation";
+import { Form, Input, Button, Typography, Checkbox, Tabs, App, Spin } from "antd";
 import {
   UserOutlined,
   LockOutlined,
@@ -11,6 +12,7 @@ import {
   SwapOutlined,
   DatabaseOutlined,
   ArrowRightOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { BRAND } from "@/lib/constants";
 import { isMockMode } from "@/lib/mock-mode";
@@ -24,7 +26,23 @@ const BRAND_CREAM = "#FDFCFB";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false);
   const { message } = App.useApp();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isMockMode) {
+      setCheckingAuth(false);
+      return;
+    }
+    getSupabase().then((supabase) => {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        setCheckingAuth(false);
+        setAlreadyLoggedIn(!!user);
+      });
+    });
+  }, []);
 
   const getSupabase = async () => {
     const { createClient } = await import("@/lib/supabase/client");
@@ -530,6 +548,10 @@ export default function LoginPage() {
     </Form>
   );
 
+  const handleGoToApp = () => {
+    router.push("/dashboard");
+  };
+
   const rightPanel = (
     <div
       style={{
@@ -541,66 +563,101 @@ export default function LoginPage() {
         justifyContent: "center",
       }}
     >
-      <div style={{ marginBottom: 32 }}>
-        <Tabs
-          defaultActiveKey="login"
-          items={[
-            { key: "login", label: "登录", children: loginForm },
-            { key: "register", label: "注册", children: registerForm },
-          ]}
-          style={{ marginBottom: 0 }}
-        />
-      </div>
-
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <Text style={{ fontSize: 13, color: "#ccc" }}>其他方式登录</Text>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 32 }}>
-        <div style={{ textAlign: "center", cursor: "pointer" }}>
-          <div
+      {checkingAuth ? (
+        <div style={{ textAlign: "center", padding: 48 }}>
+          <Spin size="large" tip="加载中..." />
+        </div>
+      ) : alreadyLoggedIn ? (
+        <div style={{ textAlign: "center", padding: "24px 0" }}>
+          <CheckCircleOutlined style={{ fontSize: 56, color: "#52c41a", marginBottom: 24 }} />
+          <Text style={{ display: "block", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>您已登录</Text>
+          <Text type="secondary" style={{ display: "block", marginBottom: 32 }}>
+            点击下方按钮进入工作台
+          </Text>
+          <Button
+            type="primary"
+            size="large"
+            block
+            onClick={handleGoToApp}
             style={{
-              width: 48,
-              height: 48,
+              height: 50,
               borderRadius: 12,
-              background: "#f0fdf4",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 6px",
+              background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_SECONDARY})`,
+              border: "none",
+              fontSize: 16,
+              fontWeight: 600,
+              color: "#fff",
+              boxShadow: "0 4px 16px rgba(211, 84, 0, 0.35)",
             }}
           >
-            <WechatOutlined style={{ fontSize: 24, color: "#22C55E" }} />
-          </div>
-          <Text style={{ fontSize: 12, color: "#999" }}>微信</Text>
+            <span style={{ marginRight: 8 }}>进入工作台</span>
+            <ArrowRightOutlined />
+          </Button>
         </div>
-        <div style={{ textAlign: "center", cursor: "pointer" }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#eff6ff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 6px",
-            }}
-          >
-            <DingtalkOutlined style={{ fontSize: 24, color: "#3B82F6" }} />
+      ) : (
+        <>
+          <div style={{ marginBottom: 32 }}>
+            <Tabs
+              defaultActiveKey="login"
+              items={[
+                { key: "login", label: "登录", children: loginForm },
+                { key: "register", label: "注册", children: registerForm },
+              ]}
+              style={{ marginBottom: 0 }}
+            />
           </div>
-          <Text style={{ fontSize: 12, color: "#999" }}>钉钉</Text>
-        </div>
-      </div>
 
-      <div style={{ textAlign: "center" }}>
-        <Text style={{ fontSize: 12, color: "#ccc" }}>
-          登录即代表您同意{" "}
-          <a style={{ color: BRAND_PRIMARY }}>服务条款</a>
-          {" "}和{" "}
-          <a style={{ color: BRAND_PRIMARY }}>隐私政策</a>
-        </Text>
-      </div>
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <Text style={{ fontSize: 13, color: "#ccc" }}>其他方式登录</Text>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 32 }}>
+            <div style={{ textAlign: "center", cursor: "pointer" }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "#f0fdf4",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 6px",
+                }}
+              >
+                <WechatOutlined style={{ fontSize: 24, color: "#22C55E" }} />
+              </div>
+              <Text style={{ fontSize: 12, color: "#999" }}>微信</Text>
+            </div>
+            <div style={{ textAlign: "center", cursor: "pointer" }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "#eff6ff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 6px",
+                }}
+              >
+                <DingtalkOutlined style={{ fontSize: 24, color: "#3B82F6" }} />
+              </div>
+              <Text style={{ fontSize: 12, color: "#999" }}>钉钉</Text>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <Text style={{ fontSize: 12, color: "#ccc" }}>
+              登录即代表您同意{" "}
+              <a style={{ color: BRAND_PRIMARY }}>服务条款</a>
+              {" "}和{" "}
+              <a style={{ color: BRAND_PRIMARY }}>隐私政策</a>
+            </Text>
+          </div>
+        </>
+      )}
     </div>
   );
 

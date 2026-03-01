@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { initSampleData } from "@/services/onboarding";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -29,8 +28,8 @@ export async function GET(request: Request) {
         const { error: tenantError } = await supabase.from("tenants").insert({
           id: tenantId,
           name: (user.email?.split("@")[0] || "新用户") + " 的店铺",
-          category: "未设置",
-          sku_scale: "0-50",
+          category: null,
+          sku_scale: null,
           status: "active",
         });
 
@@ -54,8 +53,6 @@ export async function GET(request: Request) {
             expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
             status: "active",
           });
-
-          await initSampleData(supabase, tenantId);
         }
 
         return NextResponse.redirect(

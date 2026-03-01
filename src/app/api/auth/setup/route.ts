@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { initSampleData } from "@/services/onboarding";
 
 export async function POST() {
   try {
@@ -23,14 +22,12 @@ export async function POST() {
       return NextResponse.json({ ok: true, isNew: false });
     }
 
-    // 客户端生成 UUID 后直接 INSERT，避免 RLS SELECT 策略
-    // 阻止 INSERT ... RETURNING 读回新插入的行
     const tenantId = crypto.randomUUID();
     const { error: tenantError } = await supabase.from("tenants").insert({
       id: tenantId,
       name: (user.email?.split("@")[0] || "新用户") + " 的店铺",
-      category: "未设置",
-      sku_scale: "0-50",
+      category: null,
+      sku_scale: null,
       status: "active",
     });
 
@@ -67,8 +64,6 @@ export async function POST() {
       expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
       status: "active",
     });
-
-    await initSampleData(supabase, tenantId);
 
     return NextResponse.json({ ok: true, isNew: true });
   } catch (err) {

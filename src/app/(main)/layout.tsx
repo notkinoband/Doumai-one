@@ -61,6 +61,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         if (profile) {
           const { tenants, ...userData } = profile;
           setUser(userData); setTenant(tenants);
+          if (userData.onboarding_completed === false) {
+            router.replace(`/auth/welcome?next=${encodeURIComponent(pathname)}`);
+            return;
+          }
         } else {
           const res = await fetch("/api/auth/setup", { method: "POST" });
           if (res.ok) {
@@ -68,6 +72,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             if (newProfile) {
               const { tenants: t, ...ud } = newProfile;
               setUser(ud); setTenant(t);
+              if (ud.onboarding_completed === false) {
+                router.replace(`/auth/welcome?next=${encodeURIComponent(pathname)}`);
+                return;
+              }
             }
           }
         }

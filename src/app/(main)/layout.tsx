@@ -80,7 +80,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     useAuthStore.getState().clear();
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const userMenu = {

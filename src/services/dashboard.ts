@@ -23,41 +23,104 @@ export async function getDashboardOverview(tenantId: string): Promise<DashboardO
   };
 }
 
-export async function getSalesData(tenantId: string, _days: number = 7): Promise<SalesData[]> {
-  const { data: chs } = await supabase.from("channels").select("id, platform, shop_name").eq("tenant_id", tenantId);
-  return (chs ?? []).map((ch: { id: string; platform: string; shop_name: string }) => ({
-    channel: ch.shop_name,
-    platform: ch.platform as "wechat_miniprogram" | "pinduoduo",
-    orders: 0,
-    revenue: 0,
-  }));
+export async function getSalesData(tenantId: string, days: number = 7): Promise<SalesData[]> {
+  const since = dayjs().subtract(days, "day").startOf("day").toISOString();
+
+  // 实际订单扣减都记录在 inventory_logs 中，这里按 tenant 聚合为「全部渠道」的真实统计
+  const { data: logs, error: logsError } = await supabase
+    .from("inventory_logs")
+    .select("sku_id, change_quantity, created_at, change_type")
+    .eq("tenant_id", tenantId)
+    .eq("change_type", "order_deduct")
+    .gte("created_at", since);
+  if (logsError) throw logsError;
+
+  if (!logs || logs.length === 0) {
+    return [{
+      channel: "全部渠道",
+      platform: "pinduoduo",
+      orders: 0,
+      revenue: 0,
+    }];
+  }
+
+  const skuIds = Array.from(new Set(logs.map((l: any) => l.sku_id)));
+  const { data: skus, error: skuError } = await supabase
+    .from("skus")
+    .select("id, price")
+    .in("id", skuIds);
+  if (skuError) throw skuError;
+
+  const priceMap = new Map<string, number>();
+  (skus ?? []).forEach((s: any) => {
+    priceMap.set(s.id, Number(s.price) || 0);
+  });
+
+  let orders = 0;
+  let revenue = 0;
+  (logs ?? []).forEach((l: any) => {
+    const qty = Math.abs(Number(l.change_quantity) || 0);
+    const price = priceMap.get(l.sku_id) ?? 0;
+    if (qty > 0) {
+      orders += 1;
+      revenue += price * qty;
+    }
+  });
+
+  return [{
+    channel: "全部渠道",
+    platform: "pinduoduo",
+    orders,
+    revenue: Number(revenue.toFixed(2)),
+  }];
 }
 
 export async function getReturnTrends(tenantId: string, days: number = 30): Promise<ReturnTrend[]> {
-  const start = dayjs().subtract(days, "day").format("YYYY-MM-DD");
-  const { data: records } = await supabase
+  const startDate = dayjs().subtract(days - 1, "day").startOf("day");
+
+  // 退货记录：真实退货数量
+  const { data: records, error: returnsError } = await supabase
     .from("return_records")
-    .select("created_at, refund_amount, quantity")
+    .select("created_at, quantity")
     .eq("tenant_id", tenantId)
-    .gte("created_at", start);
-  const byDate = new Map<string, { return_count: number; total_refund: number; total_orders: number }>();
-  (records ?? []).forEach((r: { created_at: string; refund_amount: number | null; quantity: number }) => {
-    const d = r.created_at.slice(0, 10);
-    const cur = byDate.get(d) ?? { return_count: 0, total_refund: 0, total_orders: 0 };
-    cur.return_count += 1;
-    cur.total_refund += Number(r.refund_amount) || 0;
-    cur.total_orders += 1;
+    .gte("created_at", startDate.toISOString());
+  if (returnsError) throw returnsError;
+
+  // 订单记录：用 inventory_logs 中 order_deduct 估算下单件数
+  const { data: orderLogs, error: orderError } = await supabase
+    .from("inventory_logs")
+    .select("created_at, change_quantity, change_type")
+    .eq("tenant_id", tenantId)
+    .eq("change_type", "order_deduct")
+    .gte("created_at", startDate.toISOString());
+  if (orderError) throw orderError;
+
+  const byDate = new Map<string, { return_qty: number; order_qty: number }>();
+
+  (records ?? []).forEach((r: any) => {
+    const d = dayjs(r.created_at).format("YYYY-MM-DD");
+    const cur = byDate.get(d) ?? { return_qty: 0, order_qty: 0 };
+    cur.return_qty += Number(r.quantity) || 0;
     byDate.set(d, cur);
   });
+
+  (orderLogs ?? []).forEach((l: any) => {
+    const d = dayjs(l.created_at).format("YYYY-MM-DD");
+    const cur = byDate.get(d) ?? { return_qty: 0, order_qty: 0 };
+    cur.order_qty += Math.abs(Number(l.change_quantity) || 0);
+    byDate.set(d, cur);
+  });
+
   return Array.from({ length: days }, (_, i) => {
-    const d = dayjs().subtract(days - 1 - i, "day").format("YYYY-MM-DD");
-    const cur = byDate.get(d) ?? { return_count: 0, total_refund: 0, total_orders: 0 };
-    const total_orders = Math.max(cur.total_orders, 1);
+    const d = startDate.add(i, "day").format("YYYY-MM-DD");
+    const cur = byDate.get(d) ?? { return_qty: 0, order_qty: 0 };
+    const totalOrders = cur.order_qty;
+    const rate = totalOrders > 0 ? (cur.return_qty / totalOrders) * 100 : 0;
     return {
       date: d,
-      return_rate: Number(((cur.return_count / total_orders) * 100).toFixed(1)),
-      return_count: cur.return_count,
-      total_orders: cur.total_orders,
+      return_rate: Number(rate.toFixed(1)),
+      return_count: cur.return_qty,
+      total_orders: totalOrders,
     };
   });
 }

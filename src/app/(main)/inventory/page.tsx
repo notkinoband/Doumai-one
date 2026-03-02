@@ -113,7 +113,6 @@ export default function InventoryPage() {
         const payload: CreateProductPayload = {
           name: String(item.name).trim(),
           sku_code: undefined,
-          unit_type: item.unit_type || null,
           price: null,
           cost: null,
           image_url: null,

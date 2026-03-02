@@ -159,7 +159,6 @@ export interface CreateProductPayload {
   image_url?: string | null;
   category?: string | null;
   sku_code?: string | null;
-  unit_type?: string | null;
   price?: number | null;
   cost?: number | null;
   initial_stock?: number;
@@ -178,7 +177,6 @@ export async function createProductWithSku(
   const timePart = Date.now().toString(36).toUpperCase();
   const autoCode = `SKU-${timePart}-${randomPart}`;
   const skuCode = (payload.sku_code?.trim() || autoCode).slice(0, 50);
-  const unitType = payload.unit_type?.trim() || null;
   const initialStock = Math.max(0, Number(payload.initial_stock) ?? 0);
   const alertThreshold = Math.max(0, Number(payload.alert_threshold) ?? 10);
   const price = payload.price != null ? Number(payload.price) : null;
@@ -207,14 +205,13 @@ export async function createProductWithSku(
       tenant_id: tenantId,
       sku_code: skuCode,
       name,
-       unit_type: unitType,
       price,
       cost,
       status: "active",
     })
     .select("id")
     .single();
-  if (skuError || !sku) throw new Error("创建 SKU 失败");
+  if (skuError || !sku) throw new Error(skuError?.message || "创建 SKU 失败");
 
   await supabase.from("inventory").insert({
     sku_id: sku.id,

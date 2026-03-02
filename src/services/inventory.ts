@@ -159,6 +159,7 @@ export interface CreateProductPayload {
   image_url?: string | null;
   category?: string | null;
   sku_code?: string | null;
+  unit_type?: string | null;
   price?: number | null;
   cost?: number | null;
   initial_stock?: number;

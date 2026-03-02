@@ -186,6 +186,36 @@ export async function createProductWithSku(
   const returnInTransit = Math.max(0, Number(payload.return_in_transit) ?? 0);
   const available = Math.max(0, initialStock - orderHold - returnInTransit);
 
+  // #region agent log
+  fetch("http://127.0.0.1:7940/ingest/3d9809dd-8a01-479e-ad0a-89622f9b620f", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "0f8292",
+    },
+    body: JSON.stringify({
+      sessionId: "0f8292",
+      runId: "pre-fix",
+      hypothesisId: "H_payload",
+      location: "services/inventory.ts:createProductWithSku:beforeInsert",
+      message: "createProductWithSku payload and computed values",
+      data: {
+        tenantId,
+        name,
+        skuCode,
+        raw_initial_stock: payload.initial_stock ?? null,
+        initialStock,
+        raw_order_hold: payload.order_hold ?? null,
+        orderHold,
+        raw_return_in_transit: payload.return_in_transit ?? null,
+        returnInTransit,
+        available,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion agent log
+
   const { data: product, error: productError } = await supabase
     .from("products")
     .insert({
@@ -219,13 +249,38 @@ export async function createProductWithSku(
     tenant_id: tenantId,
     total_quantity: initialStock,
     allocated_quantity: 0,
-    order_hold_quantity: orderHold,
-    return_in_transit_quantity: returnInTransit,
     available_quantity: available,
     alert_threshold: alertThreshold,
     allocation_strategy: "shared",
-    allocation_config: null,
+    allocation_config: { order_hold: orderHold, return_in_transit: returnInTransit },
   });
+
+  // #region agent log
+  fetch("http://127.0.0.1:7940/ingest/3d9809dd-8a01-479e-ad0a-89622f9b620f", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "0f8292",
+    },
+    body: JSON.stringify({
+      sessionId: "0f8292",
+      runId: "pre-fix",
+      hypothesisId: "H_inventoryInsert",
+      location: "services/inventory.ts:createProductWithSku:afterInventoryInsert",
+      message: "inventory insert values",
+      data: {
+        skuId: sku.id,
+        tenantId,
+        total_quantity: initialStock,
+        order_hold_quantity: orderHold,
+        return_in_transit_quantity: returnInTransit,
+        available_quantity: available,
+        alert_threshold: alertThreshold,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion agent log
 
   await supabase.from("inventory_logs").insert({
     sku_id: sku.id,

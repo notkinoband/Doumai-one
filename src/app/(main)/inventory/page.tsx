@@ -169,21 +169,33 @@ export default function InventoryPage() {
       title: "下单预扣", key: "order_hold", width: 100,
       render: (_: any, r: Sku) => {
         const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-        return inv?.order_hold_quantity ?? 0;
+        const fromColumn = (inv as any)?.order_hold_quantity;
+        const fromConfig = (inv as any)?.allocation_config?.order_hold;
+        return fromColumn ?? fromConfig ?? 0;
       },
     },
     {
       title: "退货在途", key: "return_in_transit", width: 100,
       render: (_: any, r: Sku) => {
         const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-        return inv?.return_in_transit_quantity ?? 0;
+        const fromColumn = (inv as any)?.return_in_transit_quantity;
+        const fromConfig = (inv as any)?.allocation_config?.return_in_transit;
+        return fromColumn ?? fromConfig ?? 0;
       },
     },
     {
       title: "可用库存", key: "available", width: 100,
       render: (_: any, r: Sku) => {
         const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-        return <Text strong>{inv?.available_quantity ?? 0}</Text>;
+        const total = inv?.total_quantity ?? 0;
+        const hold = (inv as any)?.order_hold_quantity
+          ?? (inv as any)?.allocation_config?.order_hold
+          ?? 0;
+        const returns = (inv as any)?.return_in_transit_quantity
+          ?? (inv as any)?.allocation_config?.return_in_transit
+          ?? 0;
+        const available = inv?.available_quantity ?? Math.max(0, total - hold - returns);
+        return <Text strong>{available}</Text>;
       },
     },
     {

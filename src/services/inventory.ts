@@ -168,6 +168,36 @@ export interface CreateProductPayload {
   return_in_transit?: number;
 }
 
+export async function deleteSkuWithInventory(skuId: string, tenantId: string): Promise<void> {
+  // 先删依赖于 sku 的记录，再删 sku 本身
+  const tables = [
+    "inventory_logs",
+    "channel_sku_mappings",
+    "return_records",
+    "inventory",
+  ] as const;
+
+  for (const table of tables) {
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .eq("sku_id", skuId)
+      .eq("tenant_id", tenantId);
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 = No rows deleted（允许没有数据）
+      throw error;
+    }
+  }
+
+  const { error: skuError } = await supabase
+    .from("skus")
+    .delete()
+    .eq("id", skuId)
+    .eq("tenant_id", tenantId);
+
+  if (skuError) throw skuError;
+}
+
 export async function createProductWithSku(
   tenantId: string,
   payload: CreateProductPayload

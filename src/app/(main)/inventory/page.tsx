@@ -7,10 +7,10 @@ import {
 } from "antd";
 import {
   SearchOutlined, PlusOutlined, EditOutlined, HistoryOutlined,
-  ExclamationCircleOutlined, UserDeleteOutlined, ReloadOutlined, MinusCircleOutlined,
+  ExclamationCircleOutlined, UserDeleteOutlined, ReloadOutlined, MinusCircleOutlined, DeleteOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "@/stores/authStore";
-import { getSkuList, updateInventory, batchUpdateInventory, getInventoryLogs, updateAlertThreshold, createProductWithSku, type CreateProductPayload } from "@/services/inventory";
+import { getSkuList, updateInventory, batchUpdateInventory, getInventoryLogs, updateAlertThreshold, createProductWithSku, deleteSkuWithInventory, type CreateProductPayload } from "@/services/inventory";
 import { getRiskyBuyers, getBlacklist, addToBlacklist, removeFromBlacklist } from "@/services/returns";
 import type { Sku, InventoryLog, RiskyBuyer, BuyerBlacklist } from "@/types/database";
 import { useSearchParams } from "next/navigation";
@@ -42,6 +42,7 @@ export default function InventoryPage() {
   const [batchForm] = Form.useForm();
   const [bulkForm] = Form.useForm();
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadSkus = useCallback(async () => {
     if (!tenant) return;
@@ -148,6 +149,21 @@ export default function InventoryPage() {
     setLogs(data);
   };
 
+  const handleDeleteSku = async (sku: Sku) => {
+    if (!tenant) return;
+    setDeletingId(sku.id);
+    try {
+      await deleteSkuWithInventory(sku.id, tenant.id);
+      message.success("已删除该商品及其库存记录");
+      loadSkus();
+    } catch (err) {
+      console.error("delete sku error", err);
+      message.error("删除失败，请稍后重试");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const columns = [
     {
       title: "SKU", dataIndex: "sku_code", width: 120,
@@ -203,16 +219,39 @@ export default function InventoryPage() {
       render: (_: any, r: Sku) => getStockTag(r),
     },
     {
-      title: "操作", key: "action", width: 140,
+      title: "操作", key: "action", width: 190,
       render: (_: any, r: Sku) => (
         <Space>
           <Tooltip title="编辑库存">
-            <Button size="small" icon={<EditOutlined />}
-              onClick={() => { setEditModal({ open: true, sku: r }); editForm.resetFields(); }} />
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => { setEditModal({ open: true, sku: r }); editForm.resetFields(); }}
+            />
           </Tooltip>
           <Tooltip title="变动日志">
-            <Button size="small" icon={<HistoryOutlined />} onClick={() => openLogs(r.id, r.name)} />
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => openLogs(r.id, r.name)}
+            />
           </Tooltip>
+          <Popconfirm
+            title="确定删除该商品及库存记录？"
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true, loading: deletingId === r.id }}
+            onConfirm={() => handleDeleteSku(r)}
+          >
+            <Tooltip title="删除该商品">
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                loading={deletingId === r.id}
+              />
+            </Tooltip>
+          </Popconfirm>
         </Space>
       ),
     },

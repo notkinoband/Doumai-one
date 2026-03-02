@@ -7,16 +7,17 @@ import {
 } from "antd";
 import {
   SearchOutlined, PlusOutlined, EditOutlined, HistoryOutlined,
-  ExclamationCircleOutlined, UserDeleteOutlined, ReloadOutlined,
+  ExclamationCircleOutlined, UserDeleteOutlined, ReloadOutlined, MinusCircleOutlined,
 } from "@ant-design/icons";
 import { useAuthStore } from "@/stores/authStore";
-import { getSkuList, updateInventory, batchUpdateInventory, getInventoryLogs, updateAlertThreshold } from "@/services/inventory";
+import { getSkuList, updateInventory, batchUpdateInventory, getInventoryLogs, updateAlertThreshold, createProductWithSku, type CreateProductPayload } from "@/services/inventory";
 import { getRiskyBuyers, getBlacklist, addToBlacklist, removeFromBlacklist } from "@/services/returns";
 import type { Sku, InventoryLog, RiskyBuyer, BuyerBlacklist } from "@/types/database";
 import { useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
 
 const { Text } = Typography;
+const BRAND_ORANGE = "#D35400";
 
 export default function InventoryPage() {
   const { tenant } = useAuthStore();
@@ -39,6 +40,8 @@ export default function InventoryPage() {
   const [blacklist, setBlacklist] = useState<BuyerBlacklist[]>([]);
   const [editForm] = Form.useForm();
   const [batchForm] = Form.useForm();
+  const [bulkForm] = Form.useForm();
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   const loadSkus = useCallback(async () => {
     if (!tenant) return;
@@ -94,6 +97,42 @@ export default function InventoryPage() {
       setSelectedRowKeys([]);
       loadSkus();
     } catch { message.error("批量更新失败"); }
+  };
+
+  const handleBulkAddProducts = async (values: any) => {
+    if (!tenant) return;
+    const items = (values.items || []).filter((item: any) => item?.name && String(item.name).trim());
+    if (!items.length) {
+      message.warning("请至少填写一个商品");
+      return;
+    }
+    try {
+      setLoading(true);
+      for (const item of items) {
+        const payload: CreateProductPayload = {
+          name: String(item.name).trim(),
+          sku_code: undefined,
+          unit_type: item.unit_type || null,
+          price: null,
+          cost: null,
+          image_url: null,
+          category: null,
+          initial_stock: item.initial_stock != null ? Number(item.initial_stock) : 0,
+          alert_threshold: 10,
+          order_hold: 0,
+          return_in_transit: 0,
+        };
+        await createProductWithSku(tenant.id, payload);
+      }
+      message.success(`已批量新增 ${items.length} 个商品`);
+      setBulkModalOpen(false);
+      bulkForm.resetFields();
+      loadSkus();
+    } catch {
+      message.error("批量新增失败，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openLogs = async (skuId: string, skuName: string) => {
@@ -192,8 +231,16 @@ export default function InventoryPage() {
                     {selectedRowKeys.length > 0 && (
                       <Button onClick={() => setBatchModal(true)}>批量操作 ({selectedRowKeys.length})</Button>
                     )}
-                    <Button type="primary" icon={<PlusOutlined />} href="/inventory/new">
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      href="/inventory/new"
+                      style={{ background: BRAND_ORANGE, borderColor: BRAND_ORANGE }}
+                    >
                       新增商品
+                    </Button>
+                    <Button onClick={() => setBulkModalOpen(true)}>
+                      批量新增商品
                     </Button>
                     <Button icon={<ReloadOutlined />} onClick={loadSkus}>刷新</Button>
                   </Space>
@@ -320,6 +367,80 @@ export default function InventoryPage() {
           <Form.Item name="reason" label="原因">
             <Input placeholder="批量调整原因" />
           </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="批量新增商品"
+        open={bulkModalOpen}
+        onCancel={() => setBulkModalOpen(false)}
+        onOk={() => bulkForm.submit()}
+        okText="保存商品"
+      >
+        <Form
+          form={bulkForm}
+          layout="vertical"
+          onFinish={handleBulkAddProducts}
+          initialValues={{ items: [{}] }}
+        >
+          <Form.List name="items">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <div key={key} style={{ marginBottom: 16, border: "1px dashed #f0f0f0", borderRadius: 8, padding: 12 }}>
+                    <Space align="baseline" style={{ width: "100%", justifyContent: "space-between" }}>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "name"]}
+                        label="商品名称"
+                        rules={[{ required: true, message: "请输入商品名称" }]}
+                        style={{ flex: 2, marginRight: 8 }}
+                      >
+                        <Input placeholder="例如：陶瓷马克杯" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "unit_type"]}
+                        label="货物类型"
+                        style={{ width: 120, marginRight: 8 }}
+                      >
+                        <Select
+                          placeholder="选择"
+                          options={[
+                            { value: "件", label: "件" },
+                            { value: "箱", label: "箱" },
+                            { value: "托盘", label: "托盘" },
+                          ]}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "initial_stock"]}
+                        label="物理总库存"
+                        style={{ width: 140, marginRight: 8 }}
+                      >
+                        <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+                      </Form.Item>
+                      {fields.length > 1 && (
+                        <Button
+                          type="link"
+                          icon={<MinusCircleOutlined />}
+                          onClick={() => remove(name)}
+                        >
+                          删除
+                        </Button>
+                      )}
+                    </Space>
+                  </div>
+                ))}
+                <Form.Item>
+                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                    新增一行
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
         </Form>
       </Modal>
 

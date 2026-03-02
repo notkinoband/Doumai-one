@@ -110,6 +110,9 @@ export default function InventoryPage() {
       setLoading(true);
       for (let index = 0; index < items.length; index += 1) {
         const item = items[index];
+        const initial = Number(item.initial_stock ?? 0) || 0;
+        const hold = Number(item.order_hold ?? 0) || 0;
+        const returns = Number(item.return_in_transit ?? 0) || 0;
         const payload: CreateProductPayload = {
           name: String(item.name).trim(),
           sku_code: undefined,
@@ -117,10 +120,10 @@ export default function InventoryPage() {
           cost: null,
           image_url: null,
           category: null,
-          initial_stock: item.initial_stock != null ? Number(item.initial_stock) : 0,
+          initial_stock: initial,
           alert_threshold: 10,
-          order_hold: 0,
-          return_in_transit: 0,
+          order_hold: hold,
+          return_in_transit: returns,
         };
         await createProductWithSku(tenant.id, payload);
       }
@@ -420,6 +423,22 @@ export default function InventoryPage() {
                         {...restField}
                         name={[name, "initial_stock"]}
                         label="物理总库存"
+                        style={{ width: 140, marginRight: 8 }}
+                      >
+                        <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "order_hold"]}
+                        label="下单预扣"
+                        style={{ width: 140, marginRight: 8 }}
+                      >
+                        <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "return_in_transit"]}
+                        label="退货在途"
                         style={{ width: 140, marginRight: 8 }}
                       >
                         <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />

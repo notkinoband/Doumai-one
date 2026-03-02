@@ -174,7 +174,10 @@ export async function createProductWithSku(
 ): Promise<{ productId: string; skuId: string }> {
   const name = payload.name?.trim();
   if (!name) throw new Error("商品名称不能为空");
-  const skuCode = (payload.sku_code?.trim() || `SKU-${Date.now()}`).slice(0, 50);
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const timePart = Date.now().toString(36).toUpperCase();
+  const autoCode = `SKU-${timePart}-${randomPart}`;
+  const skuCode = (payload.sku_code?.trim() || autoCode).slice(0, 50);
   const unitType = payload.unit_type?.trim() || null;
   const initialStock = Math.max(0, Number(payload.initial_stock) ?? 0);
   const alertThreshold = Math.max(0, Number(payload.alert_threshold) ?? 10);

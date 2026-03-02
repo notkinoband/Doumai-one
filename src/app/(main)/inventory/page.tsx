@@ -108,13 +108,11 @@ export default function InventoryPage() {
     }
     try {
       setLoading(true);
-      const base = Date.now().toString(36).toUpperCase();
       for (let index = 0; index < items.length; index += 1) {
         const item = items[index];
-        const autoSku = `SKU-${base}-${String(index + 1).padStart(3, "0")}`.slice(0, 50);
         const payload: CreateProductPayload = {
           name: String(item.name).trim(),
-          sku_code: autoSku,
+          sku_code: undefined,
           unit_type: item.unit_type || null,
           price: null,
           cost: null,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Breadcrumb,
   Button,
@@ -22,18 +22,102 @@ import {
   TagOutlined,
   ShoppingOutlined,
   ReloadOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
+import type { FormInstance } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { createProductWithSku, type CreateProductPayload } from "@/services/inventory";
+import { createClient } from "@/lib/supabase/client";
 
 const { Text } = Typography;
 
 const BRAND_ORANGE = "#D35400";
+// 需在 Supabase Dashboard → Storage 创建公开桶 product-images，并设置允许已认证用户上传
+const PRODUCT_IMAGE_BUCKET = "product-images";
 
 function generateSkuCode(): string {
   return `SKU-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+}
+
+function ProductImageUpload({ form }: { form: FormInstance }) {
+  const { message } = App.useApp();
+  const imageUrl = Form.useWatch("image_url", form) as string | undefined;
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    const tenant = useAuthStore.getState().tenant;
+    if (!tenant) return;
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${tenant.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, file, { upsert: false });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      form.setFieldValue("image_url", publicUrl);
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "上传失败");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const clearImage = () => {
+    form.setFieldValue("image_url", undefined);
+  };
+
+  return (
+    <div
+      style={{
+        aspectRatio: "8/3",
+        border: "2px dashed #d9d9d9",
+        borderRadius: 8,
+        background: "#fafafa",
+        marginBottom: 8,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+        disabled={uploading}
+      />
+      {imageUrl ? (
+        <>
+          <img src={imageUrl} alt="商品图" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          <div style={{ position: "absolute", bottom: 8, display: "flex", gap: 8 }}>
+            <Button size="small" onClick={() => inputRef.current?.click()} loading={uploading} icon={<UploadOutlined />}>
+              更换
+            </Button>
+            <Button size="small" onClick={clearImage}>移除</Button>
+          </div>
+        </>
+      ) : (
+        <div
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: uploading ? "wait" : "pointer" }}
+          onClick={() => !uploading && inputRef.current?.click()}
+        >
+          <PictureOutlined style={{ fontSize: 28, color: "#bfbfbf", marginBottom: 8 }} />
+          <Text type="secondary" style={{ fontSize: 12 }}>{uploading ? "上传中…" : "点击上传正面主图"}</Text>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function NewProductPage() {
@@ -70,6 +154,7 @@ export default function NewProductPage() {
       message.success("商品已保存");
       if (saveAndContinue) {
         form.resetFields();
+        form.setFieldValue("image_url", undefined);
         form.setFieldValue("sku_code", generateSkuCode());
         form.setFieldValue("alert_threshold", 10);
         form.setFieldValue("initial_stock", 0);
@@ -85,6 +170,7 @@ export default function NewProductPage() {
 
   const handleReset = () => {
     form.resetFields();
+    form.setFieldValue("image_url", undefined);
     form.setFieldValue("sku_code", generateSkuCode());
     form.setFieldValue("alert_threshold", 10);
     form.setFieldValue("initial_stock", 0);
@@ -146,7 +232,7 @@ export default function NewProductPage() {
           title={
             <span>
               <InfoCircleOutlined style={{ marginRight: 8, color: BRAND_ORANGE }} />
-              ① 基本信息
+              基本信息
             </span>
           }
           style={{ marginBottom: 24 }}
@@ -172,27 +258,15 @@ export default function NewProductPage() {
                   </Form.Item>
                 </Col>
               </Row>
+              <Form.Item name="alert_threshold" label="预警阈值">
+                <InputNumber min={0} style={{ width: "100%", maxWidth: 160 }} placeholder="10" />
+              </Form.Item>
             </Col>
             <Col xs={24} lg={8}>
-              <div
-                style={{
-                  aspectRatio: "8/3",
-                  border: "2px dashed #d9d9d9",
-                  borderRadius: 8,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#fafafa",
-                  marginBottom: 8,
-                }}
-              >
-                <PictureOutlined style={{ fontSize: 28, color: "#bfbfbf", marginBottom: 8 }} />
-                <Text type="secondary" style={{ fontSize: 12 }}>正面主图</Text>
+              <div style={{ marginBottom: 8 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>商品图片</Text>
               </div>
-              <Form.Item name="image_url" label="商品图片">
-                <Input placeholder="图片 URL（选填）" />
-              </Form.Item>
+              <ProductImageUpload form={form} />
             </Col>
           </Row>
         </Card>
@@ -201,13 +275,23 @@ export default function NewProductPage() {
           title={
             <span>
               <UnorderedListOutlined style={{ marginRight: 8, color: BRAND_ORANGE }} />
-              ② 商品详情
+              商品详情
             </span>
           }
           style={{ marginBottom: 24 }}
         >
           <Row gutter={16}>
-            <Col xs={24} md={12}>
+            <Col xs={24} md={8}>
+              <Form.Item name="unit_type" label="货物类型">
+                <Input placeholder="例如: 件、个、kg" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="initial_stock" label="初始库存">
+                <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
               <Form.Item name="sku_code" label="SKU">
                 <Input.Group compact>
                   <Form.Item name="sku_code" noStyle>
@@ -221,16 +305,6 @@ export default function NewProductPage() {
                     title="重新生成"
                   />
                 </Input.Group>
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={6}>
-              <Form.Item name="initial_stock" label="初始库存">
-                <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={6}>
-              <Form.Item name="alert_threshold" label="预警阈值">
-                <InputNumber min={0} style={{ width: "100%" }} placeholder="10" />
               </Form.Item>
             </Col>
           </Row>

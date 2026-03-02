@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Breadcrumb,
   Button,
@@ -45,13 +45,17 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
   const { message } = App.useApp();
   const imageUrl = Form.useWatch("image_url", form) as string | undefined;
   const [uploading, setUploading] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const displayUrl = localPreviewUrl || imageUrl;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     const tenant = useAuthStore.getState().tenant;
     if (!tenant) return;
+    setLocalPreviewUrl(URL.createObjectURL(file));
     setUploading(true);
     try {
       const supabase = createClient();
@@ -60,8 +64,10 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
       const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, file, { upsert: false });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      setLocalPreviewUrl(null);
       form.setFieldValue("image_url", publicUrl);
     } catch (err) {
+      setLocalPreviewUrl(null);
       message.error(err instanceof Error ? err.message : "上传失败");
     } finally {
       setUploading(false);
@@ -70,8 +76,12 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
   };
 
   const clearImage = () => {
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl(null);
     form.setFieldValue("image_url", undefined);
   };
+
+  useEffect(() => () => { if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl); }, [localPreviewUrl]);
 
   return (
     <div
@@ -97,9 +107,9 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
         onChange={handleFileChange}
         disabled={uploading}
       />
-      {imageUrl ? (
+      {displayUrl ? (
         <>
-          <img src={imageUrl} alt="商品图" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          <img src={displayUrl} alt="商品图" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           <div style={{ position: "absolute", bottom: 8, display: "flex", gap: 8 }}>
             <Button size="small" onClick={() => inputRef.current?.click()} loading={uploading} icon={<UploadOutlined />}>
               更换
@@ -180,11 +190,6 @@ export default function NewProductPage() {
     <div style={{ maxWidth: 1024, margin: "0 auto" }}>
       <header
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "rgba(255,255,255,0.9)",
-          backdropFilter: "blur(8px)",
           borderBottom: "1px solid #f0f0f0",
           padding: "16px 0",
           marginBottom: 24,

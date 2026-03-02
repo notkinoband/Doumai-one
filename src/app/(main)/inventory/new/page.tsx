@@ -157,6 +157,7 @@ export default function NewProductPage() {
         image_url: (values.image_url as string)?.trim() || null,
         category: (values.brand as string)?.trim() || null,
         sku_code: (values.sku_code as string)?.trim() || undefined,
+        unit_type: (values.unit_type as string)?.trim() || null,
         price: values.price != null ? Number(values.price) : null,
         cost: values.cost != null ? Number(values.cost) : null,
         initial_stock: values.initial_stock != null ? Number(values.initial_stock) : 0,
@@ -301,7 +302,14 @@ export default function NewProductPage() {
           <Row gutter={16}>
             <Col xs={24} md={8}>
               <Form.Item name="unit_type" label="货物类型">
-                <Input placeholder="例如: 件、个、kg" />
+                <Select
+                  placeholder="选择货物类型"
+                  options={[
+                    { value: "件", label: "件" },
+                    { value: "箱", label: "箱" },
+                    { value: "托盘", label: "托盘" },
+                  ]}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>

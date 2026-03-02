@@ -69,11 +69,11 @@ BEGIN
     INSERT INTO products (id, tenant_id, name, category, status) VALUES
       (p_id, t_id, item[1], item[2], 'active');
 
-    INSERT INTO skus (id, product_id, tenant_id, sku_code, name, price, cost, status) VALUES
-      (s_id, p_id, t_id, item[3] || '-' || lpad(i::TEXT, 3, '0'), item[1], item[4]::DECIMAL, item[5]::DECIMAL, 'active');
+    INSERT INTO skus (id, product_id, tenant_id, sku_code, name, unit_type, price, cost, status) VALUES
+      (s_id, p_id, t_id, item[3] || '-' || lpad(i::TEXT, 3, '0'), item[1], '件', item[4]::DECIMAL, item[5]::DECIMAL, 'active');
 
-    INSERT INTO inventory (sku_id, tenant_id, total_quantity, available_quantity, alert_threshold) VALUES
-      (s_id, t_id, stock, stock, alert_val);
+    INSERT INTO inventory (sku_id, tenant_id, total_quantity, allocated_quantity, order_hold_quantity, return_in_transit_quantity, available_quantity, alert_threshold) VALUES
+      (s_id, t_id, stock, 0, 0, 0, stock, alert_val);
 
     -- 库存变动日志
     INSERT INTO inventory_logs (sku_id, tenant_id, change_type, change_quantity, before_quantity, after_quantity, reason) VALUES

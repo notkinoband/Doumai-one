@@ -58,6 +58,7 @@ export interface Sku {
   sku_code: string;
   name: string;
   spec: Record<string, string> | null;
+  unit_type?: string | null;
   price: number | null;
   cost: number | null;
   status: "active" | "frozen" | "archived";

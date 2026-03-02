@@ -50,6 +50,7 @@ CREATE TABLE skus (
   sku_code VARCHAR(50) NOT NULL,
   name VARCHAR(200) NOT NULL,
   spec JSONB,
+  unit_type VARCHAR(20),
   price DECIMAL(10,2),
   cost DECIMAL(10,2),
   status VARCHAR(20) NOT NULL DEFAULT 'active',

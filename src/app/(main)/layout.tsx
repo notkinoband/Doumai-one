@@ -112,29 +112,47 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         trigger={null}
         collapsible
         collapsed={siderCollapsed}
-        width={200}
-        style={{ background: "#fff", borderRight: "1px solid #f0f0f0" }}
+        width={220}
+        style={{ background: "#1a160f" }}
       >
         <div
           className="h-16 flex items-center justify-center border-b border-gray-100 cursor-pointer"
           onClick={() => router.push("/dashboard")}
         >
-          <Text strong style={{ fontSize: siderCollapsed ? 16 : 20, color: "#1677FF" }}>
-            {siderCollapsed ? "兜" : BRAND.name}
-          </Text>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: "#e69719",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: siderCollapsed ? 0 : 8,
+            }}
+          >
+            <Text strong style={{ color: "#1a160f" }}>兜</Text>
+          </div>
+          {!siderCollapsed && (
+            <Text strong style={{ fontSize: 18, color: "#fff" }}>
+              {BRAND.name}
+            </Text>
+          )}
         </div>
         <div className="flex flex-col justify-between" style={{ height: "calc(100vh - 64px)" }}>
           <Menu
             mode="inline"
             selectedKeys={[pathname]}
             items={menuItems}
-            style={{ border: "none" }}
+            style={{ border: "none", background: "#1a160f", color: "#a3a3a3" }}
+            theme="dark"
             onClick={({ key }) => router.push(key)}
           />
           <Menu
             mode="inline"
             items={bottomMenuItems}
-            style={{ border: "none" }}
+            style={{ border: "none", background: "#1a160f", color: "#a3a3a3" }}
+            theme="dark"
             selectable={false}
           />
         </div>
@@ -142,7 +160,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <Layout>
         <Header
           className="flex items-center justify-between px-6"
-          style={{ background: "#fff", borderBottom: "1px solid #f0f0f0", padding: "0 24px", height: 64 }}
+          style={{
+            background: "#ffffff",
+            borderBottom: "1px solid #f0f0f0",
+            padding: "0 24px",
+            height: 64,
+          }}
         >
           <div className="flex items-center">
             {React.createElement(
@@ -164,7 +187,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </Header>
         <Content
           className="overflow-auto"
-          style={{ padding: 24, background: "#f5f5f5", minHeight: 280 }}
+          style={{ padding: 24, background: "#f8f7f6", minHeight: 280 }}
         >
           {children}
         </Content>

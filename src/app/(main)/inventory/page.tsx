@@ -105,22 +105,40 @@ export default function InventoryPage() {
 
   const columns = [
     {
-      title: "SKU 编码", dataIndex: "sku_code", width: 120,
+      title: "SKU", dataIndex: "sku_code", width: 120,
       render: (v: string) => <Text code>{v}</Text>,
     },
     { title: "商品名称", dataIndex: "name", ellipsis: true },
     {
-      title: "总库存", key: "stock", width: 90, sorter: true,
+      title: "货物类型", dataIndex: "unit_type", width: 90,
+      render: (_: any, r: Sku) => r.unit_type || "件",
+    },
+    {
+      title: "总库存", key: "total", width: 90,
       render: (_: any, r: Sku) => {
         const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
         return <Text strong>{inv?.total_quantity ?? 0}</Text>;
       },
     },
     {
-      title: "预警值", key: "alert", width: 80,
+      title: "下单预扣", key: "order_hold", width: 100,
       render: (_: any, r: Sku) => {
         const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
-        return inv?.alert_threshold ?? 10;
+        return inv?.order_hold_quantity ?? 0;
+      },
+    },
+    {
+      title: "退货在途", key: "return_in_transit", width: 100,
+      render: (_: any, r: Sku) => {
+        const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
+        return inv?.return_in_transit_quantity ?? 0;
+      },
+    },
+    {
+      title: "可用库存", key: "available", width: 100,
+      render: (_: any, r: Sku) => {
+        const inv = Array.isArray(r.inventory) ? r.inventory[0] : r.inventory;
+        return <Text strong>{inv?.available_quantity ?? 0}</Text>;
       },
     },
     {

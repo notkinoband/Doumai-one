@@ -382,6 +382,7 @@ export default function InventoryPage() {
         onCancel={() => setBulkModalOpen(false)}
         onOk={() => bulkForm.submit()}
         okText="保存商品"
+        width={900}
       >
         <Form
           form={bulkForm}

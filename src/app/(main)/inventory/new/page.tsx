@@ -36,6 +36,12 @@ const { Text } = Typography;
 const BRAND_ORANGE = "#D35400";
 // 需在 Supabase Dashboard → Storage 创建公开桶 product-images，并设置允许已认证用户上传
 const PRODUCT_IMAGE_BUCKET = "product-images";
+const CARD_STYLE = {
+  marginBottom: 24,
+  borderRadius: 12,
+  border: "1px solid #f0f0f0",
+  boxShadow: "0 12px 30px rgba(15,23,42,0.04)",
+};
 
 function generateSkuCode(): string {
   return `SKU-${Date.now().toString(36).toUpperCase().slice(-6)}`;
@@ -55,7 +61,9 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
     if (!file || !file.type.startsWith("image/")) return;
     const tenant = useAuthStore.getState().tenant;
     if (!tenant) return;
-    setLocalPreviewUrl(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl(previewUrl);
     setUploading(true);
     try {
       const supabase = createClient();
@@ -64,11 +72,11 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
       const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, file, { upsert: false });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      URL.revokeObjectURL(previewUrl);
       setLocalPreviewUrl(null);
       form.setFieldValue("image_url", publicUrl);
     } catch (err) {
-      setLocalPreviewUrl(null);
-      message.error(err instanceof Error ? err.message : "上传失败");
+      message.error(err instanceof Error ? err.message : "上传失败，图片未保存，请稍后重试");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -86,9 +94,9 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
   return (
     <div
       style={{
-        aspectRatio: "8/3",
-        border: "2px dashed #d9d9d9",
-        borderRadius: 8,
+        aspectRatio: "1 / 1",
+        border: "1px dashed #e5e7eb",
+        borderRadius: 12,
         background: "#fafafa",
         marginBottom: 8,
         display: "flex",
@@ -240,7 +248,7 @@ export default function NewProductPage() {
               基本信息
             </span>
           }
-          style={{ marginBottom: 24 }}
+          style={CARD_STYLE}
         >
           <Row gutter={24}>
             <Col xs={24} lg={16}>
@@ -283,7 +291,7 @@ export default function NewProductPage() {
               商品详情
             </span>
           }
-          style={{ marginBottom: 24 }}
+          style={CARD_STYLE}
         >
           <Row gutter={16}>
             <Col xs={24} md={8}>
@@ -324,7 +332,7 @@ export default function NewProductPage() {
                   销售信息
                 </span>
               }
-              style={{ marginBottom: 24 }}
+              style={CARD_STYLE}
             >
               <Form.Item name="price" label="售价 (CNY) *" rules={[{ required: true, message: "请输入售价" }]}>
                 <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
@@ -345,7 +353,7 @@ export default function NewProductPage() {
                   采购信息
                 </span>
               }
-              style={{ marginBottom: 24 }}
+              style={CARD_STYLE}
             >
               <Form.Item name="cost" label="成本价 (CNY) *" rules={[{ required: true, message: "请输入成本价" }]}>
                 <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0.00" />

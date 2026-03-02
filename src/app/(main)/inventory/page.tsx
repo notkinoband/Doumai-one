@@ -108,10 +108,13 @@ export default function InventoryPage() {
     }
     try {
       setLoading(true);
-      for (const item of items) {
+      const base = Date.now().toString(36).toUpperCase();
+      for (let index = 0; index < items.length; index += 1) {
+        const item = items[index];
+        const autoSku = `SKU-${base}-${String(index + 1).padStart(3, "0")}`.slice(0, 50);
         const payload: CreateProductPayload = {
           name: String(item.name).trim(),
-          sku_code: undefined,
+          sku_code: autoSku,
           unit_type: item.unit_type || null,
           price: null,
           cost: null,
@@ -128,8 +131,11 @@ export default function InventoryPage() {
       setBulkModalOpen(false);
       bulkForm.resetFields();
       loadSkus();
-    } catch {
-      message.error("批量新增失败，请稍后重试");
+    } catch (err) {
+      // 尽量把后端错误信息展示出来，方便排查
+      const desc = err instanceof Error ? err.message : String(err);
+      console.error("bulk add products error:", err);
+      message.error(`批量新增失败：${desc}`);
     } finally {
       setLoading(false);
     }

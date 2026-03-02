@@ -163,6 +163,8 @@ export interface CreateProductPayload {
   cost?: number | null;
   initial_stock?: number;
   alert_threshold?: number;
+  order_hold?: number;
+  return_in_transit?: number;
 }
 
 export async function createProductWithSku(
@@ -176,6 +178,9 @@ export async function createProductWithSku(
   const alertThreshold = Math.max(0, Number(payload.alert_threshold) ?? 10);
   const price = payload.price != null ? Number(payload.price) : null;
   const cost = payload.cost != null ? Number(payload.cost) : null;
+  const orderHold = Math.max(0, Number(payload.order_hold) ?? 0);
+  const returnInTransit = Math.max(0, Number(payload.return_in_transit) ?? 0);
+  const available = Math.max(0, initialStock - orderHold - returnInTransit);
 
   const { data: product, error: productError } = await supabase
     .from("products")
@@ -210,7 +215,9 @@ export async function createProductWithSku(
     tenant_id: tenantId,
     total_quantity: initialStock,
     allocated_quantity: 0,
-    available_quantity: initialStock,
+    order_hold_quantity: orderHold,
+    return_in_transit_quantity: returnInTransit,
+    available_quantity: available,
     alert_threshold: alertThreshold,
     allocation_strategy: "shared",
     allocation_config: null,

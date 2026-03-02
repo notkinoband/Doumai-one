@@ -65,6 +65,8 @@ CREATE TABLE inventory (
   tenant_id UUID NOT NULL REFERENCES tenants(id),
   total_quantity INTEGER NOT NULL DEFAULT 0,
   allocated_quantity INTEGER NOT NULL DEFAULT 0,
+  order_hold_quantity INTEGER NOT NULL DEFAULT 0,
+  return_in_transit_quantity INTEGER NOT NULL DEFAULT 0,
   available_quantity INTEGER NOT NULL DEFAULT 0,
   alert_threshold INTEGER DEFAULT 10,
   allocation_strategy VARCHAR(20) DEFAULT 'shared',

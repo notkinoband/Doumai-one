@@ -74,6 +74,8 @@ export interface Inventory {
   tenant_id: string;
   total_quantity: number;
   allocated_quantity: number;
+  order_hold_quantity: number;
+  return_in_transit_quantity: number;
   available_quantity: number;
   alert_threshold: number;
   allocation_strategy: AllocationStrategy;

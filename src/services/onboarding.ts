@@ -255,6 +255,9 @@ export async function initSampleData(
         sku_id: sku.id,
         tenant_id: tenantId,
         total_quantity: stock,
+        allocated_quantity: 0,
+        order_hold_quantity: 0,
+        return_in_transit_quantity: 0,
         available_quantity: stock,
         alert_threshold: 10,
       });

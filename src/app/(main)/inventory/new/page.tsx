@@ -161,6 +161,8 @@ export default function NewProductPage() {
         cost: values.cost != null ? Number(values.cost) : null,
         initial_stock: values.initial_stock != null ? Number(values.initial_stock) : 0,
         alert_threshold: values.alert_threshold != null ? Number(values.alert_threshold) : 10,
+        order_hold: values.order_hold != null ? Number(values.order_hold) : 0,
+        return_in_transit: values.return_in_transit != null ? Number(values.return_in_transit) : 0,
       };
       await createProductWithSku(tenant.id, payload);
       message.success("商品已保存");
@@ -170,6 +172,8 @@ export default function NewProductPage() {
         form.setFieldValue("sku_code", generateSkuCode());
         form.setFieldValue("alert_threshold", 10);
         form.setFieldValue("initial_stock", 0);
+        form.setFieldValue("order_hold", 0);
+        form.setFieldValue("return_in_transit", 0);
       } else {
         router.push("/inventory");
       }
@@ -186,6 +190,8 @@ export default function NewProductPage() {
     form.setFieldValue("sku_code", generateSkuCode());
     form.setFieldValue("alert_threshold", 10);
     form.setFieldValue("initial_stock", 0);
+    form.setFieldValue("order_hold", 0);
+    form.setFieldValue("return_in_transit", 0);
   };
 
   return (
@@ -233,6 +239,8 @@ export default function NewProductPage() {
           sku_code: generateSkuCode(),
           alert_threshold: 10,
           initial_stock: 0,
+          order_hold: 0,
+          return_in_transit: 0,
         }}
       >
         <Card
@@ -297,7 +305,7 @@ export default function NewProductPage() {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="initial_stock" label="初始库存">
+              <Form.Item name="initial_stock" label="物理总库存">
                 <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
               </Form.Item>
             </Col>
@@ -315,6 +323,42 @@ export default function NewProductPage() {
                     title="重新生成"
                   />
                 </Input.Group>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="order_hold" label="下单预扣">
+                <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="return_in_transit" label="退货在途">
+                <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                label="可用库存"
+                shouldUpdate={(prev, next) =>
+                  prev.initial_stock !== next.initial_stock ||
+                  prev.order_hold !== next.order_hold ||
+                  prev.return_in_transit !== next.return_in_transit
+                }
+              >
+                {({ getFieldValue }) => {
+                  const physical = Number(getFieldValue("initial_stock") ?? 0) || 0;
+                  const hold = Number(getFieldValue("order_hold") ?? 0) || 0;
+                  const returns = Number(getFieldValue("return_in_transit") ?? 0) || 0;
+                  const available = Math.max(0, physical - hold - returns);
+                  return (
+                    <InputNumber
+                      value={available}
+                      disabled
+                      style={{ width: "100%" }}
+                    />
+                  );
+                }}
               </Form.Item>
             </Col>
           </Row>

@@ -7,6 +7,8 @@ import {
   ShoppingOutlined,
   LinkOutlined,
   CrownOutlined,
+  CarOutlined,
+  LineChartOutlined,
   SettingOutlined,
   QuestionCircleOutlined,
   LogoutOutlined,
@@ -28,6 +30,8 @@ const menuItems = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: "数据看板" },
   { key: "/inventory", icon: <ShoppingOutlined />, label: "库存管理" },
   { key: "/channels", icon: <LinkOutlined />, label: "渠道同步" },
+  { key: "/logistics", icon: <CarOutlined />, label: "物流总览" },
+  { key: "/revenue", icon: <LineChartOutlined />, label: "收益估算" },
   { key: "/subscription", icon: <CrownOutlined />, label: "订阅服务" },
 ];
 

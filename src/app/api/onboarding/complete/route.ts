@@ -25,6 +25,21 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as OnboardingCompletePayload;
+    // #region agent log
+    const logPayload = { step1: body?.step1, storeName: body?.step1?.storeName, hasStep2: !!body?.step2, productsLen: body?.products?.length };
+    await fetch("http://127.0.0.1:7940/ingest/3d9809dd-8a01-479e-ad0a-89622f9b620f", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0f8292" },
+      body: JSON.stringify({
+        sessionId: "0f8292",
+        location: "api/onboarding/complete/route.ts",
+        message: "API received body",
+        data: logPayload,
+        timestamp: Date.now(),
+        hypothesisId: "B2-H3",
+      }),
+    }).catch(() => {});
+    // #endregion
     if (!body.step1 || !body.step2 || !Array.isArray(body.products)) {
       return NextResponse.json({ error: "参数不完整" }, { status: 400 });
     }

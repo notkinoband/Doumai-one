@@ -1,12 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const isMock = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your-project");
-
 export async function middleware(request: NextRequest) {
-  if (isMock) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return NextResponse.next();
   }
-
   const { updateSession } = await import("@/lib/supabase/middleware");
   return await updateSession(request);
 }

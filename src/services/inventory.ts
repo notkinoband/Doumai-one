@@ -1,9 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Sku, Inventory, InventoryLog, InventoryChangeType } from "@/types/database";
-import { isMockMode, getMockSkus } from "@/lib/mock-mode";
 
-const supabase = isMockMode ? null : createClient();
-let mockSkuData = getMockSkus();
+const supabase = createClient();
 
 interface SkuListParams {
   tenantId: string;
@@ -24,17 +22,7 @@ interface SkuListResult {
 export async function getSkuList(params: SkuListParams): Promise<SkuListResult> {
   const { tenantId, page = 1, pageSize = 20, search, status, stockStatus, sortField = "created_at", sortOrder = "desc" } = params;
 
-  if (isMockMode) {
-    let filtered = [...mockSkuData] as any[];
-    if (search) filtered = filtered.filter(s => s.name.includes(search) || s.sku_code.includes(search));
-    if (stockStatus === "out") filtered = filtered.filter(s => s.inventory.total_quantity === 0);
-    else if (stockStatus === "low") filtered = filtered.filter(s => s.inventory.total_quantity > 0 && s.inventory.total_quantity <= 10);
-    else if (stockStatus === "normal") filtered = filtered.filter(s => s.inventory.total_quantity > 10);
-    const start = (page-1)*pageSize;
-    return { data: filtered.slice(start, start+pageSize) as Sku[], total: filtered.length };
-  }
-
-  let query = supabase!
+  let query = supabase
     .from("skus")
     .select("*, product:products(*), inventory(*), channel_mappings:channel_sku_mappings(*, channel:channels(*))", { count: "exact" })
     .eq("tenant_id", tenantId);
@@ -73,16 +61,7 @@ export async function updateInventory(
   quantity: number,
   reason?: string
 ): Promise<Inventory> {
-  if (isMockMode) {
-    const sku = mockSkuData.find(s => s.id === skuId);
-    if (!sku) throw new Error("SKU not found");
-    const inv = sku.inventory;
-    const before = inv.total_quantity;
-    let newTotal = changeType === "manual_adjust" ? quantity : changeType === "order_deduct" ? Math.max(0, before - Math.abs(quantity)) : before + Math.abs(quantity);
-    inv.total_quantity = newTotal; inv.available_quantity = newTotal;
-    return inv as Inventory;
-  }
-  const { data: current, error: fetchError } = await supabase!
+  const { data: current, error: fetchError } = await supabase
     .from("inventory")
     .select("*")
     .eq("sku_id", skuId)
@@ -102,7 +81,7 @@ export async function updateInventory(
 
   const changeQty = newTotal - current.total_quantity;
 
-  const { data: updated, error: updateError } = await supabase!
+  const { data: updated, error: updateError } = await supabase
     .from("inventory")
     .update({
       total_quantity: newTotal,
@@ -115,7 +94,7 @@ export async function updateInventory(
 
   if (updateError) throw updateError;
 
-  await supabase!.from("inventory_logs").insert({
+  await supabase.from("inventory_logs").insert({
     sku_id: skuId,
     tenant_id: tenantId,
     change_type: changeType,
@@ -153,8 +132,7 @@ export async function batchUpdateInventory(
 }
 
 export async function getInventoryLogs(skuId: string, tenantId: string, limit = 50): Promise<InventoryLog[]> {
-  if (isMockMode) return [{id:"log-1",sku_id:skuId,tenant_id:tenantId,change_type:"import",change_quantity:100,before_quantity:0,after_quantity:100,source_channel:null,source_order_id:null,operator_id:null,reason:"初始导入",created_at:new Date().toISOString()}] as InventoryLog[];
-  const { data, error } = await supabase!
+  const { data, error } = await supabase
     .from("inventory_logs")
     .select("*")
     .eq("sku_id", skuId)
@@ -167,12 +145,86 @@ export async function getInventoryLogs(skuId: string, tenantId: string, limit = 
 }
 
 export async function updateAlertThreshold(skuId: string, tenantId: string, threshold: number) {
-  if (isMockMode) { const s = mockSkuData.find(s=>s.id===skuId); if(s) s.inventory.alert_threshold=threshold; return; }
-  const { error } = await supabase!
+  const { error } = await supabase
     .from("inventory")
     .update({ alert_threshold: threshold })
     .eq("sku_id", skuId)
     .eq("tenant_id", tenantId);
 
   if (error) throw error;
+}
+
+export interface CreateProductPayload {
+  name: string;
+  image_url?: string | null;
+  category?: string | null;
+  sku_code?: string | null;
+  price?: number | null;
+  cost?: number | null;
+  initial_stock?: number;
+  alert_threshold?: number;
+}
+
+export async function createProductWithSku(
+  tenantId: string,
+  payload: CreateProductPayload
+): Promise<{ productId: string; skuId: string }> {
+  const name = payload.name?.trim();
+  if (!name) throw new Error("商品名称不能为空");
+  const skuCode = (payload.sku_code?.trim() || `SKU-${Date.now()}`).slice(0, 50);
+  const initialStock = Math.max(0, Number(payload.initial_stock) ?? 0);
+  const alertThreshold = Math.max(0, Number(payload.alert_threshold) ?? 10);
+  const price = payload.price != null ? Number(payload.price) : null;
+  const cost = payload.cost != null ? Number(payload.cost) : null;
+
+  const { data: product, error: productError } = await supabase
+    .from("products")
+    .insert({
+      tenant_id: tenantId,
+      name,
+      image_url: payload.image_url || null,
+      category: payload.category || null,
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (productError || !product) throw new Error("创建商品失败");
+
+  const { data: sku, error: skuError } = await supabase
+    .from("skus")
+    .insert({
+      product_id: product.id,
+      tenant_id: tenantId,
+      sku_code: skuCode,
+      name,
+      price,
+      cost,
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (skuError || !sku) throw new Error("创建 SKU 失败");
+
+  await supabase.from("inventory").insert({
+    sku_id: sku.id,
+    tenant_id: tenantId,
+    total_quantity: initialStock,
+    allocated_quantity: 0,
+    available_quantity: initialStock,
+    alert_threshold: alertThreshold,
+    allocation_strategy: "shared",
+    allocation_config: null,
+  });
+
+  await supabase.from("inventory_logs").insert({
+    sku_id: sku.id,
+    tenant_id: tenantId,
+    change_type: "import",
+    change_quantity: initialStock,
+    before_quantity: 0,
+    after_quantity: initialStock,
+    reason: "新增商品",
+  });
+
+  return { productId: product.id, skuId: sku.id };
 }

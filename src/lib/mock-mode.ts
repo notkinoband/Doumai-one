@@ -1,6 +1,5 @@
-export const isMockMode =
-  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your-project");
+/** 已禁用：所有数据统一使用 Supabase，不再使用本地 mock 模拟数据 */
+export const isMockMode = false;
 
 export const MOCK_TENANT = {
   id: "mock-tenant-001",

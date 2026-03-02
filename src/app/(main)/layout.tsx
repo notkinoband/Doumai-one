@@ -20,7 +20,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { BRAND } from "@/lib/constants";
-import { isMockMode, MOCK_USER, MOCK_TENANT } from "@/lib/mock-mode";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -47,13 +46,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const initUser = async () => {
-      if (isMockMode) {
-        setUser(MOCK_USER as any);
-        setTenant(MOCK_TENANT as any);
-        setLoading(false);
-        setInitializing(false);
-        return;
-      }
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) { router.push("/login"); return; }

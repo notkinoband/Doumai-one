@@ -174,6 +174,9 @@ export default function InventoryPage() {
                     {selectedRowKeys.length > 0 && (
                       <Button onClick={() => setBatchModal(true)}>批量操作 ({selectedRowKeys.length})</Button>
                     )}
+                    <Button type="primary" icon={<PlusOutlined />} href="/inventory/new">
+                      新增商品
+                    </Button>
                     <Button icon={<ReloadOutlined />} onClick={loadSkus}>刷新</Button>
                   </Space>
                 </div>

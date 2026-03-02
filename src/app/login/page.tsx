@@ -15,7 +15,6 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import { BRAND } from "@/lib/constants";
-import { isMockMode } from "@/lib/mock-mode";
 
 const { Text } = Typography;
 
@@ -32,10 +31,6 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isMockMode) {
-      setCheckingAuth(false);
-      return;
-    }
     getSupabase().then((supabase) => {
       supabase.auth.getUser().then(({ data: { user } }) => {
         setCheckingAuth(false);
@@ -58,12 +53,6 @@ export default function LoginPage() {
 
   const handleLogin = async (values: { email: string; password: string }) => {
     setLoading(true);
-    if (isMockMode) {
-      await new Promise((r) => setTimeout(r, 600));
-      message.success("登录成功，正在跳转...");
-      setTimeout(() => (window.location.href = "/dashboard"), 300);
-      return;
-    }
     try {
       const supabase = await getSupabase();
       const { error } = await supabase.auth.signInWithPassword({

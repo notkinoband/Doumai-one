@@ -1,20 +1,17 @@
 import { createClient } from "@/lib/supabase/client";
-import type { RiskyBuyer, BuyerBlacklist, ReturnRecord } from "@/types/database";
-import { isMockMode, getMockRiskyBuyers } from "@/lib/mock-mode";
+import type { RiskyBuyer, BuyerBlacklist } from "@/types/database";
 
-const supabase = isMockMode ? null : createClient();
-let mockBl: BuyerBlacklist[] = [];
+const supabase = createClient();
 
 export async function getRiskyBuyers(tenantId: string): Promise<RiskyBuyer[]> {
-  if (isMockMode) return getMockRiskyBuyers().map(b => ({...b, is_blacklisted: mockBl.some(bl=>bl.buyer_id===b.buyer_id)}));
-  const { data: returns } = await supabase!
+  const { data: returns } = await supabase
     .from("return_records")
     .select("buyer_id, buyer_name, refund_amount, created_at")
     .eq("tenant_id", tenantId);
 
   if (!returns || returns.length === 0) return [];
 
-  const { data: blacklist } = await supabase!
+  const { data: blacklist } = await supabase
     .from("buyer_blacklist")
     .select("buyer_id")
     .eq("tenant_id", tenantId)
@@ -23,7 +20,7 @@ export async function getRiskyBuyers(tenantId: string): Promise<RiskyBuyer[]> {
   const blacklistedIds = new Set(blacklist?.map((b) => b.buyer_id) ?? []);
 
   const buyerMap = new Map<string, RiskyBuyer>();
-  returns.forEach((r) => {
+  returns.forEach((r: { buyer_id: string; buyer_name: string | null; refund_amount: number | null; created_at: string }) => {
     const existing = buyerMap.get(r.buyer_id);
     if (existing) {
       existing.return_count += 1;
@@ -47,8 +44,7 @@ export async function getRiskyBuyers(tenantId: string): Promise<RiskyBuyer[]> {
 }
 
 export async function getBlacklist(tenantId: string): Promise<BuyerBlacklist[]> {
-  if (isMockMode) return mockBl;
-  const { data, error } = await supabase!
+  const { data, error } = await supabase
     .from("buyer_blacklist")
     .select("*")
     .eq("tenant_id", tenantId)
@@ -68,8 +64,7 @@ export async function addToBlacklist(
   returnCount: number,
   returnAmount: number
 ) {
-  if (isMockMode) { mockBl.push({id:`bl-${Date.now()}`,tenant_id:tenantId,buyer_id:buyerId,buyer_name:buyerName,platform,reason,return_count:returnCount,return_amount:returnAmount,added_by:null,status:"active",created_at:new Date().toISOString()}); return; }
-  const { error } = await supabase!.from("buyer_blacklist").upsert(
+  const { error } = await supabase.from("buyer_blacklist").upsert(
     {
       tenant_id: tenantId,
       buyer_id: buyerId,
@@ -87,8 +82,7 @@ export async function addToBlacklist(
 }
 
 export async function removeFromBlacklist(id: string) {
-  if (isMockMode) { mockBl = mockBl.filter(b=>b.id!==id); return; }
-  const { error } = await supabase!
+  const { error } = await supabase
     .from("buyer_blacklist")
     .update({ status: "removed" })
     .eq("id", id);

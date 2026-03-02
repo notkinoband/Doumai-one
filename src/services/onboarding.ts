@@ -39,6 +39,20 @@ export async function completeOnboarding(
   payload: OnboardingCompletePayload
 ) {
   const { step1, step2, products } = payload;
+  // #region agent log
+  fetch("http://127.0.0.1:7940/ingest/3d9809dd-8a01-479e-ad0a-89622f9b620f", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0f8292" },
+    body: JSON.stringify({
+      sessionId: "0f8292",
+      location: "onboarding.ts:completeOnboarding",
+      message: "completeOnboarding step1 check",
+      data: { storeName: step1?.storeName, trimmed: step1?.storeName?.trim() },
+      timestamp: Date.now(),
+      hypothesisId: "B2-H3",
+    }),
+  }).catch(() => {});
+  // #endregion
   if (!step1.storeName?.trim()) throw new Error("店铺名称不能为空");
   const validProducts = products.filter((p) => p.name?.trim());
   if (validProducts.length === 0) throw new Error("请至少添加一个商品");

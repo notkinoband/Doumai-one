@@ -51,10 +51,7 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
   const { message } = App.useApp();
   const imageUrl = Form.useWatch("image_url", form) as string | undefined;
   const [uploading, setUploading] = useState(false);
-  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const displayUrl = localPreviewUrl || imageUrl;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -62,8 +59,7 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
     const tenant = useAuthStore.getState().tenant;
     if (!tenant) return;
     const previewUrl = URL.createObjectURL(file);
-    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
-    setLocalPreviewUrl(previewUrl);
+    form.setFieldValue("image_url", previewUrl);
     setUploading(true);
     try {
       const supabase = createClient();
@@ -71,10 +67,9 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
       const path = `${tenant.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from(PRODUCT_IMAGE_BUCKET).upload(path, file, { upsert: false });
       if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      const { data } = supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path);
+      form.setFieldValue("image_url", data.publicUrl);
       URL.revokeObjectURL(previewUrl);
-      setLocalPreviewUrl(null);
-      form.setFieldValue("image_url", publicUrl);
     } catch (err) {
       message.error(err instanceof Error ? err.message : "上传失败，图片未保存，请稍后重试");
     } finally {
@@ -84,12 +79,11 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
   };
 
   const clearImage = () => {
-    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
-    setLocalPreviewUrl(null);
+    if (imageUrl && imageUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(imageUrl);
+    }
     form.setFieldValue("image_url", undefined);
   };
-
-  useEffect(() => () => { if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl); }, [localPreviewUrl]);
 
   return (
     <div
@@ -115,9 +109,9 @@ function ProductImageUpload({ form }: { form: FormInstance }) {
         onChange={handleFileChange}
         disabled={uploading}
       />
-      {displayUrl ? (
+      {imageUrl ? (
         <>
-          <img src={displayUrl} alt="商品图" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          <img src={imageUrl} alt="商品图" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           <div style={{ position: "absolute", bottom: 8, display: "flex", gap: 8 }}>
             <Button size="small" onClick={() => inputRef.current?.click()} loading={uploading} icon={<UploadOutlined />}>
               更换
@@ -279,6 +273,9 @@ export default function NewProductPage() {
               <div style={{ marginBottom: 8 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>商品图片</Text>
               </div>
+              <Form.Item name="image_url" hidden>
+                <Input type="hidden" />
+              </Form.Item>
               <ProductImageUpload form={form} />
             </Col>
           </Row>

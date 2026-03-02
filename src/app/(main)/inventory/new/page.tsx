@@ -9,6 +9,7 @@ import {
   Input,
   InputNumber,
   Checkbox,
+  Select,
   App,
   Row,
   Col,
@@ -246,8 +247,14 @@ export default function NewProductPage() {
               }
               style={{ marginBottom: 24 }}
             >
-              <Form.Item name="price" label="售价 (CNY)">
+              <Form.Item name="price" label="售价 (CNY) *" rules={[{ required: true, message: "请输入售价" }]}>
                 <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+              </Form.Item>
+              <Form.Item name="sales_account" label="销售账户">
+                <Select placeholder="选择销售账户" allowClear options={[{ value: "一般销售收入", label: "一般销售收入" }, { value: "劳务服务收入", label: "劳务服务收入" }]} />
+              </Form.Item>
+              <Form.Item name="sales_description" label="销售描述">
+                <Input.TextArea rows={3} placeholder="将显示在报价单和发票上" />
               </Form.Item>
             </Card>
           </Col>
@@ -261,8 +268,14 @@ export default function NewProductPage() {
               }
               style={{ marginBottom: 24 }}
             >
-              <Form.Item name="cost" label="成本价 (CNY)">
+              <Form.Item name="cost" label="成本价 (CNY) *" rules={[{ required: true, message: "请输入成本价" }]}>
                 <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="0.00" />
+              </Form.Item>
+              <Form.Item name="preferred_supplier" label="首选供应商">
+                <Select placeholder="选择供应商..." allowClear options={[{ value: "供应商 A", label: "供应商 A" }, { value: "供应商 B", label: "供应商 B" }]} />
+              </Form.Item>
+              <Form.Item name="procurement_description" label="采购描述">
+                <Input.TextArea rows={3} placeholder="内部备注 or 采购单说明" />
               </Form.Item>
             </Card>
           </Col>
